@@ -107,6 +107,33 @@
             #printArea { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; padding: 0; }
         }
 
+        /* ==========================================
+           MODE LIHAT-SAJA (READ-ONLY) UNTUK PERAN GURU PIKET & KEPALA SEKOLAH
+           Dinyalakan lewat class "role-readonly" di #appRoot (lihat applyRolePermissions()).
+           HANYA mengunci elemen yang benar-benar bisa mengubah data (form Apel, tombol
+           tambah/hapus, dropdown status kehadiran per baris) — kontrol filter/tampilan
+           (pencarian, pilih hari/sesi/bulan, tombol Export/Cetak) TETAP bisa dipakai.
+        ========================================== */
+        .role-readonly #formApelPagi input,
+        .role-readonly #formApelPagi select,
+        .role-readonly #formApelPagi textarea,
+        .role-readonly #formApelPagi button,
+        .role-readonly #piketContainer select,
+        .role-readonly #guruMengajarContainer select,
+        .role-readonly #kosongContainer select,
+        .role-readonly #kosongContainer button,
+        .role-readonly #kosongContainer input,
+        .role-readonly #terlambatContainer button,
+        .role-readonly #izinContainer button,
+        .role-readonly #tamuContainer button,
+        .role-readonly .btn-add-epiket {
+            pointer-events: none !important;
+            opacity: 0.55;
+            filter: grayscale(35%);
+        }
+        .role-readonly-banner { display: none; }
+        .role-readonly .role-readonly-banner { display: flex; }
+
         /* Overlay Login Google */
         #authOverlay {
             position: fixed; inset: 0; z-index: 9999;
@@ -171,6 +198,9 @@
                         <option value="pc">Tampilan: Mode PC</option>
                     </select>
                 </div>
+                <span id="roleBadge" class="text-[11px] bg-white/15 text-white px-3 py-1 rounded-full font-semibold flex items-center gap-1.5">
+                    <i class="fa-solid fa-id-badge"></i> Administrator
+                </span>
                 <span id="autosaveIndicator" class="text-[11px] text-emerald-300 flex items-center gap-1.5 transition-opacity duration-500 opacity-0">
                     <i class="fa-solid fa-check-circle"></i> <span>Tersimpan otomatis</span>
                 </span>
@@ -200,6 +230,10 @@
                 <button onclick="switchMainTab('admin')" id="btn-maintab-admin" 
                         class="maintab-btn px-4 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-blue-600 hover:border-slate-300 flex items-center gap-2 transition whitespace-nowrap">
                     <i class="fa-solid fa-user-shield"></i> Admin
+                </button>
+                <button onclick="switchMainTab('kepsek')" id="btn-maintab-kepsek" 
+                        class="maintab-btn px-4 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-blue-600 hover:border-slate-300 flex items-center gap-2 transition whitespace-nowrap">
+                    <i class="fa-solid fa-chalkboard-user"></i> Dashboard Kepsek
                 </button>
             </div>
         </div>
@@ -383,6 +417,9 @@
                     <button onclick="switchEpiketMod('guru-piket')" class="epiket-tab-btn text-left px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition flex items-center gap-3">
                         <i class="fa-solid fa-users w-4 text-center"></i> Guru Piket
                     </button>
+                    <button onclick="switchEpiketMod('guru-mengajar')" class="epiket-tab-btn text-left px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition flex items-center gap-3">
+                        <i class="fa-solid fa-chalkboard-user w-4 text-center"></i> Guru Mengajar
+                    </button>
                     <button onclick="switchEpiketMod('apel')" class="epiket-tab-btn text-left px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition flex items-center gap-3">
                         <i class="fa-solid fa-bullhorn w-4 text-center"></i> Apel Pagi
                     </button>
@@ -401,7 +438,10 @@
                     <button onclick="switchEpiketMod('tamu')" class="epiket-tab-btn text-left px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition flex items-center gap-3">
                         <i class="fa-solid fa-address-book w-4 text-center"></i> Buku Tamu
                     </button>
-                    <button onclick="switchEpiketMod('laporan')" class="epiket-tab-btn text-left px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition flex items-center gap-3 mt-4 border-t border-slate-100 pt-3">
+                    <button onclick="switchEpiketMod('rekap')" class="epiket-tab-btn text-left px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition flex items-center gap-3 mt-4 border-t border-slate-100 pt-3">
+                        <i class="fa-solid fa-chart-column w-4 text-center"></i> Rekap Bulanan
+                    </button>
+                    <button onclick="switchEpiketMod('laporan')" class="epiket-tab-btn text-left px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition flex items-center gap-3">
                         <i class="fa-solid fa-print w-4 text-center"></i> Cetak Laporan
                     </button>
                 </nav>
@@ -409,14 +449,23 @@
 
             <!-- Konten Utama E-Piket -->
             <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6 overflow-y-auto relative">
-                
+
+                <!-- Banner Mode Lihat-Saja (khusus peran Guru Piket) -->
+                <div class="role-readonly-banner items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold rounded-lg px-3 py-2 mb-4">
+                    <i class="fa-solid fa-eye"></i> Mode lihat-saja — akun Anda hanya dapat melihat data, tidak dapat menambah/mengubah/menghapus.
+                </div>
+
                 <!-- MODUL: Dashboard -->
                 <div id="ep-dashboard" class="epiket-module block space-y-6">
                     <h3 class="text-xl font-bold text-slate-800 border-b border-slate-100 pb-2">Real-Time Dashboard</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl shadow-sm">
-                            <p class="text-xs text-blue-600 font-semibold uppercase tracking-wider mb-1">Guru Hadir / Total</p>
+                            <p class="text-xs text-blue-600 font-semibold uppercase tracking-wider mb-1">Guru Piket Hadir</p>
                             <h4 class="text-2xl font-bold text-blue-900" id="dashPiket">0/0</h4>
+                        </div>
+                        <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl shadow-sm">
+                            <p class="text-xs text-indigo-600 font-semibold uppercase tracking-wider mb-1">Guru Mengajar Hadir</p>
+                            <h4 class="text-2xl font-bold text-indigo-900" id="dashGuruMengajar">0/0</h4>
                         </div>
                         <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl shadow-sm">
                             <p class="text-xs text-emerald-600 font-semibold uppercase tracking-wider mb-1">Status Apel</p>
@@ -471,6 +520,34 @@
                                 </tr>
                             </thead>
                             <tbody id="piketContainer" class="divide-y divide-slate-100">
+                                <!-- JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- MODUL: Guru Mengajar (terpisah dari Guru Piket) -->
+                <div id="ep-guru-mengajar" class="epiket-module hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-2 mb-4">
+                        <h3 class="text-xl font-bold text-slate-800">Absensi Guru Mengajar (Sesuai Jadwal KBM)</h3>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <label class="text-xs font-semibold text-slate-500">Hari:</label>
+                            <select id="epGuruMengajarHari" onchange="generateGuruMengajarList()" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500"></select>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 -mt-2 mb-4">Daftar guru mengajar hari <span id="epGuruMengajarHariLabel" class="font-semibold"></span> otomatis diambil dari <span class="font-semibold">Admin &gt; Atur Jadwal Mengajar Mingguan</span>. Data kehadiran ini terpisah dari absensi Guru Piket.</p>
+                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="p-3 border-b border-slate-200">Nama Guru</th>
+                                    <th class="p-3 border-b border-slate-200">Jabatan</th>
+                                    <th class="p-3 border-b border-slate-200 text-center">Kelas Diajar</th>
+                                    <th class="p-3 border-b border-slate-200 text-center">Status Kehadiran</th>
+                                    <th class="p-3 border-b border-slate-200">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="guruMengajarContainer" class="divide-y divide-slate-100">
                                 <!-- JS -->
                             </tbody>
                         </table>
@@ -579,7 +656,7 @@
                 <div id="ep-terlambat" class="epiket-module hidden">
                     <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-4">
                         <h3 class="text-xl font-bold text-slate-800">Buku Kasus: Siswa Terlambat</h3>
-                        <button onclick="openModal('modalTerlambat')" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus me-1"></i> Tambah</button>
+                        <button onclick="openModal('modalTerlambat')" class="btn-add-epiket bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus me-1"></i> Tambah</button>
                     </div>
                     <div class="overflow-x-auto border border-slate-200 rounded-lg">
                         <table class="w-full text-left text-sm whitespace-nowrap">
@@ -600,7 +677,7 @@
                 <div id="ep-izin" class="epiket-module hidden">
                     <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-4">
                         <h3 class="text-xl font-bold text-slate-800">Pencatatan Izin Pulang Siswa</h3>
-                        <button onclick="openModal('modalIzin')" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus me-1"></i> Izin Baru</button>
+                        <button onclick="openModal('modalIzin')" class="btn-add-epiket bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus me-1"></i> Izin Baru</button>
                     </div>
                     <div class="overflow-x-auto border border-slate-200 rounded-lg">
                         <table class="w-full text-left text-sm whitespace-nowrap">
@@ -621,7 +698,7 @@
                 <div id="ep-tamu" class="epiket-module hidden">
                     <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-4">
                         <h3 class="text-xl font-bold text-slate-800">Agenda Buku Tamu</h3>
-                        <button onclick="openModal('modalTamu')" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus me-1"></i> Tamu Baru</button>
+                        <button onclick="openModal('modalTamu')" class="btn-add-epiket bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus me-1"></i> Tamu Baru</button>
                     </div>
                     <div class="overflow-x-auto border border-slate-200 rounded-lg">
                         <table class="w-full text-left text-sm whitespace-nowrap">
@@ -634,6 +711,39 @@
                                 </tr>
                             </thead>
                             <tbody id="tamuContainer" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- MODUL: Rekap Bulanan -->
+                <div id="ep-rekap" class="epiket-module hidden space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-2">
+                        <h3 class="text-xl font-bold text-slate-800">Riwayat &amp; Rekap Bulanan</h3>
+                        <div class="flex flex-wrap items-center gap-2 shrink-0">
+                            <label class="text-xs font-semibold text-slate-500">Bulan:</label>
+                            <input type="month" id="epRekapBulan" onchange="renderRekapBulanan('epRekapBulan','epRekapTableBody','epRekapChart')" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500">
+                            <button onclick="exportRekapBulananExcel('epRekapBulan')" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition"><i class="fa-solid fa-file-excel me-1"></i>Export Excel</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500">Data harian tersimpan otomatis setiap hari (guru piket hadir, status apel, kelas kosong, siswa terlambat/izin, buku tamu) sehingga bisa dilihat trennya per bulan — berguna untuk laporan bulanan ke Kepala Sekolah.</p>
+                    <div class="border border-slate-100 rounded-xl p-4 shadow-sm h-64 relative">
+                        <canvas id="epRekapChart"></canvas>
+                    </div>
+                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="p-2 border-b">Tanggal</th>
+                                    <th class="p-2 border-b text-center">Guru Piket Hadir</th>
+                                    <th class="p-2 border-b text-center">Guru Mengajar Hadir</th>
+                                    <th class="p-2 border-b text-center">Status Apel</th>
+                                    <th class="p-2 border-b text-center">Kelas Kosong</th>
+                                    <th class="p-2 border-b text-center">Terlambat</th>
+                                    <th class="p-2 border-b text-center">Izin</th>
+                                    <th class="p-2 border-b text-center">Tamu</th>
+                                </tr>
+                            </thead>
+                            <tbody id="epRekapTableBody" class="divide-y divide-slate-100"></tbody>
                         </table>
                     </div>
                 </div>
@@ -895,6 +1005,72 @@
                             <tbody id="kbmJadwalAdminContainer" class="divide-y divide-slate-100"></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB: DASHBOARD KEPALA SEKOLAH (READ-ONLY) -->
+        <!-- ========================================== -->
+        <section id="tab-kepsek" class="maintab-content hidden space-y-6">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+                <div class="bg-white/15 p-3 rounded-full text-2xl"><i class="fa-solid fa-chalkboard-user"></i></div>
+                <div>
+                    <h3 class="font-bold text-lg">Dashboard Kepala Sekolah</h3>
+                    <p class="text-xs text-blue-100">Ringkasan piket &amp; kesiswaan hari ini — tampilan lihat-saja (read-only), tanpa perlu masuk sebagai admin.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-blue-600 font-semibold uppercase tracking-wider mb-1">Guru Piket Hadir</p>
+                    <h4 class="text-2xl font-bold text-blue-900" id="kepsekDashPiket">0/0</h4>
+                </div>
+                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-indigo-600 font-semibold uppercase tracking-wider mb-1">Guru Mengajar Hadir</p>
+                    <h4 class="text-2xl font-bold text-indigo-900" id="kepsekDashGuruMengajar">0/0</h4>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-emerald-600 font-semibold uppercase tracking-wider mb-1">Status Apel</p>
+                    <h4 class="text-xl font-bold text-emerald-900 mt-1" id="kepsekDashApel">Belum</h4>
+                </div>
+                <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-amber-600 font-semibold uppercase tracking-wider mb-1">Kelas Kosong</p>
+                    <h4 class="text-2xl font-bold text-amber-900" id="kepsekDashKosong">0</h4>
+                </div>
+                <div class="bg-rose-50 border border-rose-100 p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-rose-600 font-semibold uppercase tracking-wider mb-1">Siswa Terlambat</p>
+                    <h4 class="text-2xl font-bold text-rose-900" id="kepsekDashTerlambat">0</h4>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-2">
+                    <h3 class="text-lg font-bold text-slate-800">Riwayat &amp; Rekap Bulanan</h3>
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
+                        <label class="text-xs font-semibold text-slate-500">Bulan:</label>
+                        <input type="month" id="kepsekRekapBulan" onchange="renderRekapBulanan('kepsekRekapBulan','kepsekRekapTableBody','kepsekRekapChart')" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="border border-slate-100 rounded-xl p-4 shadow-sm h-64 relative">
+                    <canvas id="kepsekRekapChart"></canvas>
+                </div>
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="p-2 border-b">Tanggal</th>
+                                <th class="p-2 border-b text-center">Guru Piket Hadir</th>
+                                <th class="p-2 border-b text-center">Guru Mengajar Hadir</th>
+                                <th class="p-2 border-b text-center">Status Apel</th>
+                                <th class="p-2 border-b text-center">Kelas Kosong</th>
+                                <th class="p-2 border-b text-center">Terlambat</th>
+                                <th class="p-2 border-b text-center">Izin</th>
+                                <th class="p-2 border-b text-center">Tamu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kepsekRekapTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -1500,8 +1676,10 @@
             tamu: [],
             kbm: [], // Kontrol kelas
             apel: { status: 'Belum', jam: '-', pembina: '-', catatan: '-' },
-            guruKehadiran: {},
-            pengumuman: '' // Teks pengumuman yang diinput Admin, tampil di layar kode akses
+            guruKehadiran: {}, // Kehadiran GURU PIKET (petugas piket pagi/siang, sesuai PIKET_ASSIGNMENT)
+            guruMengajarKehadiran: {}, // Kehadiran GURU MENGAJAR (guru dengan jadwal KBM hari ini, sesuai JADWAL_MENGAJAR) — terpisah dari guru piket
+            pengumuman: '', // Teks pengumuman yang diinput Admin, tampil di layar kode akses
+            riwayatHarian: {} // Snapshot data tiap hari (key: 'YYYY-MM-DD') untuk fitur Rekap Bulanan
         };
         
         let chartKbmInstance = null;
@@ -1629,7 +1807,7 @@
 
         // Mengisi semua dropdown pilihan hari di seluruh halaman (dipanggil sekali saat load)
         function initHariSelectors() {
-            ['epPiketHari', 'epKbmHari', 'jadwalHariSelect', 'adminPiketHari', 'adminKbmHari', 'laporanHari'].forEach(id => {
+            ['epPiketHari', 'epGuruMengajarHari', 'epKbmHari', 'jadwalHariSelect', 'adminPiketHari', 'adminKbmHari', 'laporanHari'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = buildHariOptions(getHariIni());
             });
@@ -1655,6 +1833,34 @@
         //    HARUS SAMA PERSIS dengan nilai ACCESS_CODE di kode Apps Script (langkah setup).
         const ACCESS_CODE = "piket10";
 
+        // ==========================================
+        // MULTI-USER & HAK AKSES (ROLE)
+        // ==========================================
+        // Setiap baris berikut adalah "kode masuk" yang berbeda untuk tiap peran. Semuanya tetap
+        // membaca/menulis data yang SAMA di Google Sheets (lewat ACCESS_CODE di atas) — hanya
+        // tampilan & hak akses di aplikasi yang dibedakan sesuai peran. Admin boleh mengganti
+        // kode-kode ini sesuai kebutuhan sekolah (harus tetap unik satu sama lain).
+        const ROLE_CODES = [
+            { code: "brielle12",     role: "admin",    label: "Administrator" },
+            { code: "piket101",      role: "operator", label: "Operator Piket" },
+            { code: "piket10",       role: "guru",     label: "AdminGuru Piket (Lihat-saja)" },
+            { code: "piket10kepsek", role: "kepsek",   label: "Kepala Sekolah (Lihat-saja)" }
+        ];
+        const ROLE_STORAGE_KEY = 'eduadmin_role';
+        let currentRole = 'admin';
+
+        // Tab utama yang boleh diakses tiap peran. Peran "kepsek" hanya diarahkan ke dashboard khususnya.
+        const ROLE_TAB_ACCESS = {
+            admin:    ['dashboard', 'jadwal', 'epiket', 'admin', 'kepsek'],
+            operator: ['dashboard', 'jadwal', 'epiket'],
+            guru:     ['dashboard', 'jadwal', 'epiket'],
+            kepsek:   ['kepsek']
+        };
+        // Peran yang HANYA BOLEH MELIHAT (tidak boleh tambah/ubah/hapus) data di modul E-Piket.
+        const READONLY_ROLES = ['guru', 'kepsek'];
+        // Modal input data yang tidak boleh dibuka oleh peran lihat-saja.
+        const READONLY_BLOCKED_MODALS = ['modalTerlambat', 'modalIzin', 'modalTamu'];
+
         let _saveDebounceTimer = null;
         const ACCESS_STORAGE_KEY = 'eduadmin_accessGranted';
 
@@ -1664,13 +1870,16 @@
             const errText = document.getElementById('authErrorText');
             errText.classList.add('hidden');
 
-            if (input !== ACCESS_CODE) {
+            const matchedRole = ROLE_CODES.find(r => r.code === input);
+            if (!matchedRole) {
                 errText.classList.remove('hidden');
                 return;
             }
+            currentRole = matchedRole.role;
 
             try {
                 localStorage.setItem(ACCESS_STORAGE_KEY, '1');
+                localStorage.setItem(ROLE_STORAGE_KEY, currentRole);
             } catch (e) { /* abaikan jika localStorage tidak tersedia */ }
 
             await unlockApp();
@@ -1687,6 +1896,7 @@
             if (btnMasuk) btnMasuk.disabled = true;
 
             await bootApp(); // muat data dari Google Sheets lalu render seluruh aplikasi
+            applyRolePermissions(); // batasi tab & fitur sesuai peran yang login
 
             overlay.style.display = 'none';
             appRoot.classList.remove('app-locked');
@@ -1694,8 +1904,31 @@
 
         // Kunci ulang aplikasi (kembali ke layar kode akses) — tidak menghapus data di Sheets
         function logoutApp() {
-            try { localStorage.removeItem(ACCESS_STORAGE_KEY); } catch (e) {}
+            try {
+                localStorage.removeItem(ACCESS_STORAGE_KEY);
+                localStorage.removeItem(ROLE_STORAGE_KEY);
+            } catch (e) {}
             location.reload();
+        }
+
+        // Terapkan batasan tab & mode lihat-saja sesuai peran yang sedang login
+        function applyRolePermissions() {
+            const allowedTabs = ROLE_TAB_ACCESS[currentRole] || ROLE_TAB_ACCESS.operator;
+
+            document.querySelectorAll('.maintab-btn').forEach(btn => {
+                const tabId = btn.id.replace('btn-maintab-', '');
+                btn.classList.toggle('hidden', !allowedTabs.includes(tabId));
+            });
+
+            const roleInfo = ROLE_CODES.find(r => r.role === currentRole);
+            const roleBadge = document.getElementById('roleBadge');
+            if (roleBadge) roleBadge.innerHTML = `<i class="fa-solid fa-id-badge"></i> ${roleInfo ? roleInfo.label : 'Administrator'}`;
+
+            const appRootEl = document.getElementById('appRoot');
+            if (appRootEl) appRootEl.classList.toggle('role-readonly', READONLY_ROLES.includes(currentRole));
+
+            // Buka tab pertama yang diizinkan untuk peran ini
+            switchMainTab(allowedTabs[0]);
         }
 
         // Mode Tampilan manual (HP/Tablet/PC/Otomatis) — cadangan selain perbaikan responsif otomatis.
@@ -1716,7 +1949,10 @@
         // Saat halaman dibuka: kalau kode akses sudah pernah benar di device ini, langsung buka tanpa tanya lagi
         (function checkAutoUnlock() {
             let granted = false;
-            try { granted = localStorage.getItem(ACCESS_STORAGE_KEY) === '1'; } catch (e) {}
+            try {
+                granted = localStorage.getItem(ACCESS_STORAGE_KEY) === '1';
+                currentRole = localStorage.getItem(ROLE_STORAGE_KEY) || 'admin';
+            } catch (e) {}
             if (granted) {
                 document.addEventListener('DOMContentLoaded', unlockApp);
             }
@@ -1813,6 +2049,7 @@
             renderGuruList();
             initCharts();
             generateGuruPiketList(); // Auto-generate absensi list & jadwal KBM sesuai hari terpilih
+            generateGuruMengajarList(); // Auto-generate absensi Guru Mengajar (terpisah dari Guru Piket)
             renderJadwalPelajaranTab();
             updateEpiketDashboard();
             renderTerlambat();
@@ -1851,8 +2088,11 @@
 
             if (tabId === 'epiket') {
                 generateGuruPiketList();
+                generateGuruMengajarList();
             } else if (tabId === 'jadwal') {
                 renderJadwalPelajaranTab();
+            } else if (tabId === 'kepsek') {
+                renderDashboardKepsek();
             }
         }
 
@@ -1865,10 +2105,18 @@
 
             if (modId === 'laporan') {
                 renderLaporanKoordinatorOptions();
+            } else if (modId === 'rekap') {
+                renderRekapBulanan('epRekapBulan', 'epRekapTableBody', 'epRekapChart');
+            } else if (modId === 'guru-mengajar') {
+                generateGuruMengajarList();
             }
         }
 
         function openModal(id) {
+            if (READONLY_ROLES.includes(currentRole) && READONLY_BLOCKED_MODALS.includes(id)) {
+                Swal.fire({ icon: 'info', title: 'Mode Lihat-saja', text: 'Akun Anda hanya memiliki akses lihat, tidak dapat menambah data.', timer: 2200, showConfirmButton: false });
+                return;
+            }
             document.getElementById(id).classList.remove('hidden');
         }
 
@@ -2234,6 +2482,72 @@
             saveState();
         }
 
+        // Absensi GURU MENGAJAR — terpisah dari Guru Piket. Diambil dari JADWAL_MENGAJAR hari terpilih
+        // (setiap guru yang punya jam mengajar hari itu, tanpa duplikat), bukan dari PIKET_ASSIGNMENT.
+        function generateGuruMengajarList() {
+            const container = document.getElementById('guruMengajarContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const hari = getSelectedHari('epGuruMengajarHari');
+            const labelEl = document.getElementById('epGuruMengajarHariLabel');
+            if (labelEl) labelEl.textContent = hari;
+
+            const jadwalHari = JADWAL_MENGAJAR[hari] || [];
+
+            // Kumpulkan guru unik yang mengajar hari ini + daftar kelas yang diajarnya
+            const guruMap = {};
+            jadwalHari.forEach(k => {
+                if (!guruMap[k.id_guru]) guruMap[k.id_guru] = new Set();
+                guruMap[k.id_guru].add(k.kelas);
+            });
+
+            const daftarIdGuru = Object.keys(guruMap).sort((a, b) => {
+                const ga = MASTER_GURU.find(g => g.id_guru === a);
+                const gb = MASTER_GURU.find(g => g.id_guru === b);
+                return (ga ? ga.nama_guru : a).localeCompare(gb ? gb.nama_guru : b);
+            });
+
+            if (daftarIdGuru.length === 0) {
+                container.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-sm text-slate-400">Belum ada jadwal mengajar untuk hari ${hari}. Silakan atur di menu Admin &gt; Atur Jadwal Mengajar Mingguan.</td></tr>`;
+                return;
+            }
+
+            daftarIdGuru.forEach(idGuru => {
+                const guru = MASTER_GURU.find(g => g.id_guru === idGuru);
+                if (!guru) return;
+                if (!appState.guruMengajarKehadiran[idGuru]) {
+                    appState.guruMengajarKehadiran[idGuru] = { status: 'Hadir', ket: '-' };
+                }
+                const statusNow = appState.guruMengajarKehadiran[idGuru].status;
+                const badgeClass = statusNow === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
+                const opts = ['Hadir', 'Izin', 'Sakit', 'Alpa'].map(o => `<option value="${o}" ${o === statusNow ? 'selected' : ''}>${o}</option>`).join('');
+                const kelasList = [...guruMap[idGuru]].sort().join(', ');
+                container.innerHTML += `
+                    <tr>
+                        <td class="p-3 border-b"><span class="font-bold">${guru.nama_guru}</span></td>
+                        <td class="p-3 border-b text-xs">${guru.tugas_tambahan}</td>
+                        <td class="p-3 border-b text-center text-xs">${kelasList}</td>
+                        <td class="p-3 border-b text-center"><span class="px-2 py-1 ${badgeClass} rounded-full text-xs font-bold" id="stmengajar-${idGuru}">${statusNow}</span></td>
+                        <td class="p-3 border-b text-center">
+                            <select onchange="updateStatusGuruMengajar('${idGuru}', this.value)" class="text-xs border border-slate-200 rounded p-1">
+                                ${opts}
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateStatusGuruMengajar(id, val) {
+            appState.guruMengajarKehadiran[id].status = val;
+            const badge = document.getElementById(`stmengajar-${id}`);
+            badge.textContent = val;
+            badge.className = `px-2 py-1 rounded-full text-xs font-bold ${val === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`;
+            updateEpiketDashboard();
+            saveState();
+        }
+
         // Mengisi ulang opsi dropdown filter Kelas pada modul Kontrol KBM sesuai kelas yang ada di jadwal hari terpilih
         function renderKbmKelasFilterOptions(hari) {
             const kelasFilterEl = document.getElementById('epKbmKelasFilter');
@@ -2355,6 +2669,13 @@
             const hadir = idsPiketHariIni.filter(id => (appState.guruKehadiran[id] && appState.guruKehadiran[id].status) === 'Hadir' || !appState.guruKehadiran[id]).length;
             document.getElementById('dashPiket').textContent = `${hadir}/${idsPiketHariIni.length}`;
 
+            // Guru Mengajar — dihitung terpisah dari Guru Piket, berbasis JADWAL_MENGAJAR hari ini
+            const jadwalMengajarHariIni = JADWAL_MENGAJAR[hariIni] || [];
+            const idsMengajarHariIni = [...new Set(jadwalMengajarHariIni.map(k => k.id_guru))];
+            const hadirMengajar = idsMengajarHariIni.filter(id => (appState.guruMengajarKehadiran[id] && appState.guruMengajarKehadiran[id].status) === 'Hadir' || !appState.guruMengajarKehadiran[id]).length;
+            const dashGuruMengajarEl = document.getElementById('dashGuruMengajar');
+            if (dashGuruMengajarEl) dashGuruMengajarEl.textContent = `${hadirMengajar}/${idsMengajarHariIni.length}`;
+
             document.getElementById('dashApel').textContent = appState.apel.status;
             document.getElementById('dashApel').className = appState.apel.status === 'Dilaksanakan' ? 'text-xl font-bold text-emerald-600 mt-1' : 'text-xl font-bold text-amber-600 mt-1';
 
@@ -2365,6 +2686,153 @@
             document.getElementById('dashTerlambat').textContent = appState.terlambat.length;
 
             updateCharts(hadir, idsPiketHariIni.length - hadir, kosong);
+
+            // Cerminkan angka yang sama ke kartu Dashboard Kepsek (kalau elemennya ada di halaman)
+            const kepsekPiketEl = document.getElementById('kepsekDashPiket');
+            if (kepsekPiketEl) kepsekPiketEl.textContent = `${hadir}/${idsPiketHariIni.length}`;
+            const kepsekGuruMengajarEl = document.getElementById('kepsekDashGuruMengajar');
+            if (kepsekGuruMengajarEl) kepsekGuruMengajarEl.textContent = `${hadirMengajar}/${idsMengajarHariIni.length}`;
+            const kepsekApelEl = document.getElementById('kepsekDashApel');
+            if (kepsekApelEl) {
+                kepsekApelEl.textContent = appState.apel.status;
+                kepsekApelEl.className = appState.apel.status === 'Dilaksanakan' ? 'text-xl font-bold text-emerald-600 mt-1' : 'text-xl font-bold text-amber-600 mt-1';
+            }
+            const kepsekKosongEl = document.getElementById('kepsekDashKosong');
+            if (kepsekKosongEl) kepsekKosongEl.textContent = kosong;
+            const kepsekTerlambatEl = document.getElementById('kepsekDashTerlambat');
+            if (kepsekTerlambatEl) kepsekTerlambatEl.textContent = appState.terlambat.length;
+
+            // Simpan snapshot hari ini untuk fitur Riwayat & Rekap Bulanan
+            snapshotRiwayatHarian(hadir, idsPiketHariIni.length, kosong, hadirMengajar, idsMengajarHariIni.length);
+        }
+
+        // ==========================================
+        // RIWAYAT & REKAP BULANAN
+        // ==========================================
+
+        // Simpan ringkasan data hari ini ke appState.riwayatHarian (dipanggil tiap kali dashboard diperbarui).
+        // Hanya menyimpan ke server (saveState) kalau ada perubahan, supaya tidak boros request.
+        function snapshotRiwayatHarian(hadir, totalPiket, kosong, hadirMengajar, totalMengajar) {
+            if (!appState.riwayatHarian) appState.riwayatHarian = {};
+            const tanggalKey = new Date().toISOString().slice(0, 10);
+            const next = {
+                tanggal: tanggalKey,
+                hari: getHariIni(),
+                guruHadir: hadir,
+                guruTotal: totalPiket,
+                guruMengajarHadir: hadirMengajar || 0,
+                guruMengajarTotal: totalMengajar || 0,
+                statusApel: appState.apel.status,
+                kelasKosong: kosong,
+                terlambat: appState.terlambat.length,
+                izin: appState.izin.length,
+                tamu: appState.tamu.length
+            };
+            const prev = appState.riwayatHarian[tanggalKey];
+            const berubah = !prev || JSON.stringify(prev) !== JSON.stringify(next);
+            appState.riwayatHarian[tanggalKey] = next;
+            if (berubah) saveState();
+        }
+
+        // Ambil semua data riwayat harian untuk satu bulan tertentu (format bulanValue: 'YYYY-MM'), terurut tanggal
+        function getBulanRows(bulanValue) {
+            const riwayat = appState.riwayatHarian || {};
+            return Object.keys(riwayat)
+                .filter(k => bulanValue && k.startsWith(bulanValue))
+                .sort()
+                .map(k => riwayat[k]);
+        }
+
+        let rekapChartInstances = {};
+
+        // Render tabel + grafik Rekap Bulanan. Dipakai bersama oleh modul E-Piket > Rekap Bulanan
+        // dan tab Dashboard Kepsek (cukup beda ID input bulan / tabel / canvas grafik).
+        function renderRekapBulanan(bulanInputId, tableBodyId, chartCanvasId) {
+            const bulanEl = document.getElementById(bulanInputId);
+            if (!bulanEl) return;
+            if (!bulanEl.value) {
+                const now = new Date();
+                bulanEl.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            }
+
+            const rows = getBulanRows(bulanEl.value);
+            const tbody = document.getElementById(tableBodyId);
+            if (tbody) {
+                if (rows.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-sm text-slate-400">Belum ada data riwayat untuk bulan ini.</td></tr>`;
+                } else {
+                    tbody.innerHTML = rows.map(r => `
+                        <tr>
+                            <td class="p-2 border-b font-semibold">${new Date(r.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} <span class="text-xs text-slate-400 font-normal">(${r.hari})</span></td>
+                            <td class="p-2 border-b text-center">${r.guruHadir}/${r.guruTotal}</td>
+                            <td class="p-2 border-b text-center">${r.guruMengajarHadir || 0}/${r.guruMengajarTotal || 0}</td>
+                            <td class="p-2 border-b text-center">${r.statusApel}</td>
+                            <td class="p-2 border-b text-center">${r.kelasKosong}</td>
+                            <td class="p-2 border-b text-center">${r.terlambat}</td>
+                            <td class="p-2 border-b text-center">${r.izin}</td>
+                            <td class="p-2 border-b text-center">${r.tamu}</td>
+                        </tr>`).join('');
+                }
+            }
+
+            const canvasEl = document.getElementById(chartCanvasId);
+            if (canvasEl) {
+                const labels = rows.map(r => new Date(r.tanggal + 'T00:00:00').getDate());
+                const dataTerlambat = rows.map(r => r.terlambat);
+                const dataIzin = rows.map(r => r.izin);
+                if (rekapChartInstances[chartCanvasId]) {
+                    const inst = rekapChartInstances[chartCanvasId];
+                    inst.data.labels = labels;
+                    inst.data.datasets[0].data = dataTerlambat;
+                    inst.data.datasets[1].data = dataIzin;
+                    inst.update();
+                } else {
+                    rekapChartInstances[chartCanvasId] = new Chart(canvasEl.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [
+                                { label: 'Terlambat', data: dataTerlambat, backgroundColor: '#3b82f6' },
+                                { label: 'Izin Pulang', data: dataIzin, backgroundColor: '#f59e0b' }
+                            ]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                    });
+                }
+            }
+        }
+
+        // Export tabel Rekap Bulanan ke file Excel (.xlsx)
+        function exportRekapBulananExcel(bulanInputId) {
+            const bulanEl = document.getElementById(bulanInputId);
+            const rows = getBulanRows(bulanEl ? bulanEl.value : '');
+            if (rows.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Belum Ada Data', text: 'Belum ada data riwayat untuk bulan yang dipilih.' });
+                return;
+            }
+            const dataExcel = rows.map(r => ({
+                Tanggal: r.tanggal,
+                Hari: r.hari,
+                'Guru Piket Hadir': r.guruHadir,
+                'Guru Piket Total': r.guruTotal,
+                'Guru Mengajar Hadir': r.guruMengajarHadir || 0,
+                'Guru Mengajar Total': r.guruMengajarTotal || 0,
+                'Status Apel': r.statusApel,
+                'Kelas Kosong': r.kelasKosong,
+                'Siswa Terlambat': r.terlambat,
+                'Izin Pulang': r.izin,
+                'Buku Tamu': r.tamu
+            }));
+            const ws = XLSX.utils.json_to_sheet(dataExcel);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Rekap Bulanan');
+            XLSX.writeFile(wb, `Rekap-Piket-${bulanEl.value}.xlsx`);
+        }
+
+        // Render tab Dashboard Kepsek: kartu ringkasan hari ini (via updateEpiketDashboard) + rekap bulanan
+        function renderDashboardKepsek() {
+            updateEpiketDashboard();
+            renderRekapBulanan('kepsekRekapBulan', 'kepsekRekapTableBody', 'kepsekRekapChart');
         }
 
         function initCharts() {
@@ -2750,6 +3218,7 @@
             renderKbmJadwalAdminList();
             renderKbmTable();
             renderJadwalPelajaranTab();
+            generateGuruMengajarList();
             updateEpiketDashboard();
             const jamLabel = jamMulai === jamSelesai ? `Jam ke-${jamMulai}` : `Jam ke-${jamMulai} s/d ${jamSelesai}`;
             Swal.fire({icon: 'success', title: 'Ditambahkan', text: `${jamLabel} kelas ${kelas} hari ${hari} berhasil ditambahkan ke Jadwal Mengajar.`, timer: 1800, showConfirmButton: false});
@@ -2796,6 +3265,7 @@
             renderKbmJadwalAdminList();
             renderKbmTable();
             renderJadwalPelajaranTab();
+            generateGuruMengajarList();
             updateEpiketDashboard();
         }
 
@@ -2866,13 +3336,16 @@
                 confirmButtonText: 'Ya, Reset!'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    updateEpiketDashboard(); // pastikan angka final hari ini tersimpan dulu ke Riwayat & Rekap Bulanan
                     appState.terlambat = [];
                     appState.izin = [];
                     appState.tamu = [];
                     appState.apel = { status: 'Belum', jam: '-', pembina: '-', catatan: '-' };
                     appState.guruKehadiran = {};
+                    appState.guruMengajarKehadiran = {};
                     renderTerlambat(); renderIzin(); renderTamu();
                     generateGuruPiketList();
+                    generateGuruMengajarList();
                     updateEpiketDashboard();
                     saveState();
                     Swal.fire('Direset!', 'Data telah dikosongkan.', 'success');
