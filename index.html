@@ -379,24 +379,25 @@
                         <select id="jadwalHariSelect" onchange="renderJadwalPelajaranTab()" class="border border-slate-300 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-blue-500"></select>
                     </div>
                 </div>
-                <div class="relative mb-4 max-w-sm">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-magnifying-glass text-sm"></i></span>
-                    <input type="text" id="cariJadwalGuru" oninput="renderJadwalPelajaranTab()" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Cari nama guru, kelas, atau mapel...">
+
+                <!-- Toolbar: pencarian + filter kelas + ringkasan cepat -->
+                <div class="flex flex-col md:flex-row gap-3 mb-4">
+                    <div class="relative flex-1 md:max-w-sm">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-magnifying-glass text-sm"></i></span>
+                        <input type="text" id="cariJadwalGuru" oninput="renderJadwalPelajaranTab()" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Cari nama guru, kelas, atau mapel...">
+                    </div>
+                    <div class="flex gap-2 items-center shrink-0">
+                        <label class="text-xs font-semibold text-slate-500 whitespace-nowrap">Kelas:</label>
+                        <select id="jadwalKelasFilter" onchange="renderJadwalPelajaranTab()" class="border border-slate-300 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-blue-500 flex-1 md:flex-none">
+                            <option value="">Semua Kelas</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="overflow-x-auto border border-slate-200 rounded-lg">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
-                        <thead class="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th class="p-3 border-b border-slate-200">Jam Ke</th>
-                                <th class="p-3 border-b border-slate-200">Kelas</th>
-                                <th class="p-3 border-b border-slate-200">Guru</th>
-                                <th class="p-3 border-b border-slate-200">Mata Pelajaran</th>
-                                <th class="p-3 border-b border-slate-200 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="jadwalPelajaranContainer" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
+
+                <div id="jadwalPelajaranSummary" class="flex flex-wrap gap-2 mb-4"></div>
+
+                <!-- Wadah kartu jadwal (dikelompokkan per kelas, ramah untuk HP maupun PC) -->
+                <div id="jadwalPelajaranContainer" class="space-y-4"></div>
             </div>
         </section>
 
@@ -1891,7 +1892,6 @@
             { code: "piket10",       role: "guru",     label: "AdminGuru Piket (Lihat-saja)" },
             { code: "piket10kepsek", role: "kepsek",   label: "Kepala Sekolah (Lihat-saja)" }
         ];
-        const ROLE_STORAGE_KEY = 'eduadmin_role';
         let currentRole = 'admin';
 
         // Tab utama yang boleh diakses tiap peran. Peran "kepsek" hanya diarahkan ke dashboard khususnya.
@@ -1907,7 +1907,6 @@
         const READONLY_BLOCKED_MODALS = ['modalTerlambat', 'modalIzin', 'modalTamu'];
 
         let _saveDebounceTimer = null;
-        const ACCESS_STORAGE_KEY = 'eduadmin_accessGranted';
 
         // Cek kode akses yang diketik user terhadap ACCESS_CODE. Kalau cocok, buka aplikasi & muat data.
         async function checkAccessCode() {
@@ -1921,11 +1920,6 @@
                 return;
             }
             currentRole = matchedRole.role;
-
-            try {
-                localStorage.setItem(ACCESS_STORAGE_KEY, '1');
-                localStorage.setItem(ROLE_STORAGE_KEY, currentRole);
-            } catch (e) { /* abaikan jika localStorage tidak tersedia */ }
 
             await unlockApp();
         }
@@ -1949,10 +1943,6 @@
 
         // Kunci ulang aplikasi (kembali ke layar kode akses) — tidak menghapus data di Sheets
         function logoutApp() {
-            try {
-                localStorage.removeItem(ACCESS_STORAGE_KEY);
-                localStorage.removeItem(ROLE_STORAGE_KEY);
-            } catch (e) {}
             location.reload();
         }
 
@@ -1991,17 +1981,9 @@
             document.addEventListener('DOMContentLoaded', () => setViewMode(saved));
         })();
 
-        // Saat halaman dibuka: kalau kode akses sudah pernah benar di device ini, langsung buka tanpa tanya lagi
-        (function checkAutoUnlock() {
-            let granted = false;
-            try {
-                granted = localStorage.getItem(ACCESS_STORAGE_KEY) === '1';
-                currentRole = localStorage.getItem(ROLE_STORAGE_KEY) || 'admin';
-            } catch (e) {}
-            if (granted) {
-                document.addEventListener('DOMContentLoaded', unlockApp);
-            }
-        })();
+        // Setiap kali halaman dibuka/refresh, layar kode akses SELALU ditampilkan lagi —
+        // tidak ada auto-unlock berdasarkan localStorage. Pengguna (termasuk Guru Piket)
+        // wajib memasukkan kode akses setiap kali membuka aplikasi.
 
         // ==========================================
         // PENYIMPANAN DATA (Google Sheets via Apps Script)
@@ -3402,41 +3384,131 @@
         // ==========================================
         // TAB JADWAL PELAJARAN (Tampilan Jadwal Mengajar per Hari)
         // ==========================================
+        // Ambil 1-2 huruf inisial dari nama guru untuk ditampilkan sebagai avatar bulat
+        function ambilInisialNama(nama) {
+            if (!nama) return '?';
+            const bagian = nama.replace(/^(Bpk\.|Ibu|Bapak|Dra\.|Drs\.|S\.Pd\.?|M\.Pd\.?)\s*/gi, '').trim().split(/\s+/);
+            return ((bagian[0] || '')[0] || '?').toUpperCase() + ((bagian[1] || '')[0] || '').toUpperCase();
+        }
+
+        // Warna avatar konsisten berdasarkan nama (biar tiap guru punya warna khasnya sendiri)
+        function warnaAvatar(seed) {
+            const palet = [
+                'bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700',
+                'bg-violet-100 text-violet-700', 'bg-rose-100 text-rose-700', 'bg-cyan-100 text-cyan-700',
+                'bg-indigo-100 text-indigo-700', 'bg-teal-100 text-teal-700'
+            ];
+            let hash = 0;
+            for (let i = 0; i < (seed || '').length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+            return palet[Math.abs(hash) % palet.length];
+        }
+
+        // Isi ulang dropdown filter kelas sesuai daftar kelas yang ada jadwalnya hari itu, sambil menjaga pilihan aktif jika masih valid
+        function isiFilterKelasJadwal(daftarKelas) {
+            const sel = document.getElementById('jadwalKelasFilter');
+            if (!sel) return;
+            const nilaiSekarang = sel.value;
+            const opsiUnik = Array.from(new Set(daftarKelas)).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+            sel.innerHTML = '<option value="">Semua Kelas</option>' + opsiUnik.map(kls => `<option value="${kls}">${kls}</option>`).join('');
+            if (opsiUnik.includes(nilaiSekarang)) sel.value = nilaiSekarang;
+        }
+
         function renderJadwalPelajaranTab() {
             const cont = document.getElementById('jadwalPelajaranContainer');
+            const summaryEl = document.getElementById('jadwalPelajaranSummary');
             if (!cont) return;
 
             const hari = getSelectedHari('jadwalHariSelect');
             const searchEl = document.getElementById('cariJadwalGuru');
             const keyword = (searchEl ? searchEl.value : '').toLowerCase().trim();
 
-            const daftar = (JADWAL_MENGAJAR[hari] || []).map((k, idx) => Object.assign({}, k, { _idx: idx }))
+            const daftarHariIni = JADWAL_MENGAJAR[hari] || [];
+            isiFilterKelasJadwal(daftarHariIni.map(k => k.kelas));
+            const kelasFilter = (document.getElementById('jadwalKelasFilter') || {}).value || '';
+
+            const daftar = daftarHariIni.map((k, idx) => Object.assign({}, k, { _idx: idx }))
                 .sort((a, b) => (a.jam_mulai - b.jam_mulai) || a.kelas.localeCompare(b.kelas));
 
             const filtered = daftar.filter(k => {
+                if (kelasFilter && k.kelas !== kelasFilter) return false;
                 if (!keyword) return true;
                 const g = MASTER_GURU.find(x => x.id_guru === k.id_guru);
                 const namaGuru = g ? g.nama_guru.toLowerCase() : '';
                 return namaGuru.includes(keyword) || k.kelas.toLowerCase().includes(keyword) || (k.mapel || '').toLowerCase().includes(keyword);
             });
 
+            // Ringkasan cepat di atas: total jam pelajaran & jumlah kelas aktif hari ini
+            if (summaryEl) {
+                const totalKelas = new Set(filtered.map(k => k.kelas)).size;
+                const totalTidakHadir = filtered.filter(k => k.status === 'Tidak Hadir').length;
+                summaryEl.innerHTML = filtered.length === 0 ? '' : `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                        <i class="fa-solid fa-list-check"></i> ${filtered.length} Jam Pelajaran
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                        <i class="fa-solid fa-chalkboard"></i> ${totalKelas} Kelas
+                    </span>
+                    ${totalTidakHadir > 0 ? `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+                        <i class="fa-solid fa-triangle-exclamation"></i> ${totalTidakHadir} Guru Tidak Hadir
+                    </span>` : ''}`;
+            }
+
             if (filtered.length === 0) {
-                cont.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-sm text-slate-400">Belum ada jadwal pelajaran untuk hari ${hari}${keyword ? ' yang sesuai dengan pencarian' : ''}. Silakan atur di menu Admin &gt; Atur Jadwal Mengajar Mingguan.</td></tr>`;
+                cont.innerHTML = `
+                    <div class="flex flex-col items-center justify-center text-center py-12 px-4 border-2 border-dashed border-slate-200 rounded-xl">
+                        <i class="fa-solid fa-calendar-xmark text-3xl text-slate-300 mb-3"></i>
+                        <p class="text-sm font-semibold text-slate-500">Belum ada jadwal pelajaran untuk hari ${hari}${keyword || kelasFilter ? ' yang sesuai dengan pencarian/filter' : ''}.</p>
+                        <p class="text-xs text-slate-400 mt-1">Silakan atur di menu Admin &gt; Atur Jadwal Mengajar Mingguan.</p>
+                    </div>`;
                 return;
             }
 
-            cont.innerHTML = filtered.map(k => {
-                const g = MASTER_GURU.find(x => x.id_guru === k.id_guru) || {};
-                const jamLabel = k.jam_mulai === k.jam_selesai ? `Jam ke-${k.jam_mulai}` : `Jam ke-${k.jam_mulai} s/d ${k.jam_selesai}`;
-                const badgeClass = k.status === 'Tidak Hadir' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700';
+            // Kelompokkan per kelas supaya lebih mudah dipindai: satu kartu = jadwal 1 kelas seharian
+            const perKelas = {};
+            filtered.forEach(k => {
+                if (!perKelas[k.kelas]) perKelas[k.kelas] = [];
+                perKelas[k.kelas].push(k);
+            });
+            const daftarKelasUrut = Object.keys(perKelas).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+
+            cont.innerHTML = daftarKelasUrut.map(kelas => {
+                const jamList = perKelas[kelas];
+                const baris = jamList.map(k => {
+                    const g = MASTER_GURU.find(x => x.id_guru === k.id_guru) || {};
+                    const namaGuru = g.nama_guru || k.id_guru;
+                    const jamLabel = k.jam_mulai === k.jam_selesai ? `${k.jam_mulai}` : `${k.jam_mulai}-${k.jam_selesai}`;
+                    const tidakHadir = k.status === 'Tidak Hadir';
+                    const statusBadge = tidakHadir
+                        ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-circle-xmark"></i>Tidak Hadir</span>'
+                        : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-circle-check"></i>Hadir</span>';
+                    return `
+                        <div class="flex items-center gap-3 p-3 ${tidakHadir ? 'bg-rose-50/60' : ''} hover:bg-slate-50 transition-colors">
+                            <div class="shrink-0 w-14 h-14 rounded-lg bg-slate-800 text-white flex flex-col items-center justify-center leading-none">
+                                <span class="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">Jam</span>
+                                <span class="text-base font-bold">${jamLabel}</span>
+                            </div>
+                            <div class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ${warnaAvatar(namaGuru)}">
+                                ${ambilInisialNama(namaGuru)}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-slate-800 truncate">${namaGuru}</p>
+                                <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-book me-1"></i>${k.mapel || '-'}</p>
+                            </div>
+                            <div class="shrink-0">${statusBadge}</div>
+                        </div>`;
+                }).join('<div class="border-t border-slate-100"></div>');
+
                 return `
-                    <tr>
-                        <td class="p-3 border-b font-semibold">${jamLabel}</td>
-                        <td class="p-3 border-b">${k.kelas}</td>
-                        <td class="p-3 border-b">${g.nama_guru || k.id_guru}</td>
-                        <td class="p-3 border-b">${k.mapel}</td>
-                        <td class="p-3 border-b text-center"><span class="px-2 py-1 rounded-full text-xs font-bold ${badgeClass}">${k.status}</span></td>
-                    </tr>`;
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                        <div class="flex items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-chalkboard text-blue-600"></i> Kelas ${kelas}
+                            </h4>
+                            <span class="text-[11px] font-semibold text-slate-500">${jamList.length} jam pelajaran</span>
+                        </div>
+                        <div class="divide-y divide-slate-100">${baris}</div>
+                    </div>`;
             }).join('');
         }
 
@@ -3503,7 +3575,6 @@
                     } catch (err) {
                         console.error('Gagal menghapus data di Google Sheets:', err);
                     }
-                    localStorage.removeItem(ACCESS_STORAGE_KEY);
                     location.reload();
                 }
             });
