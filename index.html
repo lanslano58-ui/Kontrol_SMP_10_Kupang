@@ -44,6 +44,62 @@
             font-weight: 600;
         }
 
+        /* Cegah blok penting (misal: Pengesahan/Tanda Tangan) terpotong antar halaman saat cetak/export PDF */
+        .avoid-break {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        /* ==========================================
+           RESPONSIVE: tinggi panel utama
+           Sebelumnya pakai class Tailwind h-[calc(100vh-180px)] yang memaksa tinggi tetap
+           di semua ukuran layar -> di HP jadi kepotong/ kegencet. Sekarang otomatis jadi
+           tinggi menyesuaikan konten di layar sempit, dan tetap tinggi penuh di layar besar.
+        ========================================== */
+        .app-fixed-height {
+            height: calc(100vh - 180px);
+        }
+        @media (max-width: 767px) {
+            .app-fixed-height {
+                height: auto;
+                min-height: 50vh;
+            }
+        }
+
+        /* ==========================================
+           MODE TAMPILAN MANUAL (cadangan)
+           Dipilih lewat dropdown "Mode Tampilan" di header. Defaultnya "Otomatis" (tidak menambah
+           attribute apapun, tampilan mengikuti perbaikan responsif otomatis di atas & ukuran layar asli).
+           Mode HP/Tablet/PC memaksa tata letak tertentu terlepas dari lebar layar sebenarnya —
+           berguna kalau HP menampilkan mode "situs desktop" atau saat ingin melihat pratinjau tampilan lain.
+        ========================================== */
+        html[data-view-mode="hp"] .app-fixed-height { height: auto !important; min-height: 50vh !important; }
+        html[data-view-mode="hp"] .grid { grid-template-columns: 1fr !important; }
+        html[data-view-mode="hp"] table { font-size: 0.75rem !important; }
+        html[data-view-mode="hp"] main.max-w-7xl,
+        html[data-view-mode="hp"] header .max-w-7xl,
+        html[data-view-mode="hp"] nav .max-w-7xl { max-width: 100% !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+
+        html[data-view-mode="tablet"] .app-fixed-height { height: auto !important; min-height: 55vh !important; }
+        html[data-view-mode="tablet"] main.max-w-7xl,
+        html[data-view-mode="tablet"] header .max-w-7xl,
+        html[data-view-mode="tablet"] nav .max-w-7xl { max-width: 768px !important; }
+
+        html[data-view-mode="pc"] .app-fixed-height { height: calc(100vh - 180px) !important; min-height: 0 !important; }
+        html[data-view-mode="pc"] .grid-cols-1.md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        html[data-view-mode="pc"] .grid-cols-1.md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        html[data-view-mode="pc"] .grid-cols-1.lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        html[data-view-mode="pc"] .lg\:col-span-1 { grid-column: span 1 / span 1 !important; }
+        html[data-view-mode="pc"] .lg\:col-span-2 { grid-column: span 2 / span 2 !important; }
+        html[data-view-mode="pc"] main.max-w-7xl { max-width: 80rem !important; }
+
+        /* Kotak Pengumuman & Info Ulang Tahun di layar kode akses */
+        #loginAnnouncementBox {
+            max-height: 220px;
+            overflow-y: auto;
+            text-align: left;
+        }
+
         /* Print Media Styles */
         @media print {
             body * { visibility: hidden; }
@@ -64,12 +120,18 @@
 
     <!-- OVERLAY LOGIN GOOGLE -->
     <div id="authOverlay">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 text-center">
             <div class="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="fa-solid fa-graduation-cap text-3xl text-blue-700"></i>
             </div>
             <h1 class="font-bold text-lg text-slate-800 mb-1">SuperApp SMPN 10 Kupang</h1>
-            <p id="authStatusText" class="text-sm text-slate-500 mb-6">Masukkan kode akses admin/operator piket untuk membuka data.</p>
+            <p id="authStatusText" class="text-sm text-slate-500 mb-4">Masukkan kode akses admin/operator piket untuk membuka data.</p>
+
+            <div id="loginAnnouncementBox" class="hidden bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 text-xs text-slate-600">
+                <div id="loginBirthdayInfo"></div>
+                <p id="loginPengumumanText" class="whitespace-pre-wrap"></p>
+            </div>
+
             <input type="password" id="accessCodeInput" placeholder="Kode Akses" 
                    class="w-full border border-slate-300 rounded-lg p-2.5 text-sm text-center mb-3 focus:outline-none focus:border-blue-500"
                    onkeydown="if(event.key==='Enter') checkAccessCode()">
@@ -99,16 +161,15 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-                <div class="relative w-full sm:w-64">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-300 text-xs">
-                        <i class="fa-solid fa-key"></i>
-                    </span>
-                    <input type="password" id="geminiApiKey" oninput="saveApiKeyToStorage()"
-                           class="w-full bg-blue-900/40 text-white placeholder-blue-300 text-xs rounded-lg pl-8 pr-8 py-2 border border-blue-500/30 focus:outline-none focus:border-blue-400 transition shadow-inner" 
-                           placeholder="API Key Gemini (Untuk AI Laporan)">
-                    <button type="button" onclick="toggleApiKey()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-300 hover:text-white">
-                        <i id="apiKeyIcon" class="fa-solid fa-eye-slash text-xs"></i>
-                    </button>
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-display text-blue-300 text-xs"></i>
+                    <select id="viewModeSelect" onchange="setViewMode(this.value)" title="Mode Tampilan"
+                            class="bg-blue-900/40 text-white text-xs rounded-lg px-2 py-1.5 border border-blue-500/30 focus:outline-none focus:border-blue-400 transition">
+                        <option value="auto">Tampilan: Otomatis</option>
+                        <option value="hp">Tampilan: Mode HP</option>
+                        <option value="tablet">Tampilan: Mode Tablet</option>
+                        <option value="pc">Tampilan: Mode PC</option>
+                    </select>
                 </div>
                 <span id="autosaveIndicator" class="text-[11px] text-emerald-300 flex items-center gap-1.5 transition-opacity duration-500 opacity-0">
                     <i class="fa-solid fa-check-circle"></i> <span>Tersimpan otomatis</span>
@@ -136,10 +197,6 @@
                         class="maintab-btn px-4 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-blue-600 hover:border-slate-300 flex items-center gap-2 transition whitespace-nowrap">
                     <i class="fa-solid fa-shield-halved"></i> Sistem EPiket
                 </button>
-                <button onclick="switchMainTab('ailog')" id="btn-maintab-ailog" 
-                        class="maintab-btn px-4 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-blue-600 hover:border-slate-300 flex items-center gap-2 transition whitespace-nowrap">
-                    <i class="fa-solid fa-robot"></i> AI Laporan Piket
-                </button>
                 <button onclick="switchMainTab('admin')" id="btn-maintab-admin" 
                         class="maintab-btn px-4 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-blue-600 hover:border-slate-300 flex items-center gap-2 transition whitespace-nowrap">
                     <i class="fa-solid fa-user-shield"></i> Admin
@@ -154,7 +211,7 @@
         <!-- TAB 1: DIREKTORI GURU -->
         <!-- ========================================== -->
         <section id="tab-dashboard" class="maintab-content space-y-6 flex-grow">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-180px)]">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 app-fixed-height">
                 <!-- Sidebar Pencarian Guru -->
                 <div class="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col h-full">
                     <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
@@ -312,7 +369,7 @@
         <!-- ========================================== -->
         <!-- TAB 2: SISTEM E-PIKET -->
         <!-- ========================================== -->
-        <section id="tab-epiket" class="maintab-content hidden h-[calc(100vh-180px)] flex flex-col md:flex-row gap-4">
+        <section id="tab-epiket" class="maintab-content hidden app-fixed-height flex flex-col md:flex-row gap-4">
             
             <!-- Sidebar Internal E-Piket -->
             <div class="w-full md:w-64 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-y-auto flex flex-col">
@@ -464,12 +521,22 @@
                 <div id="ep-kbm" class="epiket-module hidden">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-2 mb-4">
                         <h3 class="text-xl font-bold text-slate-800">Kontrol Kehadiran KBM</h3>
-                        <div class="flex items-center gap-2 shrink-0">
+                        <div class="flex flex-wrap items-center gap-2 shrink-0">
                             <label class="text-xs font-semibold text-slate-500">Hari:</label>
                             <select id="epKbmHari" onchange="renderKbmTable()" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500"></select>
+                            <label class="text-xs font-semibold text-slate-500 ml-1">Shift:</label>
+                            <select id="epKbmShift" onchange="renderKbmTable()" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500">
+                                <option value="Semua">Semua Shift</option>
+                                <option value="Pagi">Pagi</option>
+                                <option value="Siang">Siang</option>
+                            </select>
+                            <label class="text-xs font-semibold text-slate-500 ml-1">Kelas:</label>
+                            <select id="epKbmKelasFilter" onchange="renderKbmTable()" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500">
+                                <option value="">Semua Kelas</option>
+                            </select>
                         </div>
                     </div>
-                    <p class="text-xs text-slate-500 -mt-2 mb-4">Jadwal mengajar hari <span id="epKbmHariLabel" class="font-semibold"></span> ditarik otomatis dari jadwal mingguan yang diatur Admin.</p>
+                    <p class="text-xs text-slate-500 -mt-2 mb-4">Jadwal mengajar hari <span id="epKbmHariLabel" class="font-semibold"></span> ditarik otomatis dari jadwal mingguan yang diatur Admin. Gunakan filter Shift &amp; Kelas untuk mempersempit tampilan (Shift <span class="font-semibold">Pagi</span> = Jam ke-1 s/d Jam ke-<span id="epKbmBatasShiftLabel"></span>, Shift <span class="font-semibold">Siang</span> = setelahnya).</p>
                     <div class="overflow-x-auto border border-slate-200 rounded-lg">
                         <table class="w-full text-left text-sm whitespace-nowrap">
                             <thead class="bg-slate-50 text-slate-600">
@@ -647,12 +714,12 @@
                             </div>
 
                             <!-- H. Pengesahan -->
-                            <div class="pt-6">
+                            <div class="pt-6 avoid-break">
                                 <h4 class="font-bold border-b border-dashed border-slate-300 mb-4">H. Pengesahan</h4>
                                 <p class="text-right text-sm mb-4" id="printKotaTanggal">&nbsp;</p>
                                 <p class="text-sm mb-3">Mengetahui,</p>
                                 <!-- Baris atas: Koordinator Sekolah Pagi/Siang & Koordinator Piket -->
-                                <div class="grid grid-cols-2 gap-4 text-sm text-center">
+                                <div class="grid grid-cols-2 gap-4 text-sm text-center avoid-break">
                                     <!-- Koordinator Sekolah Pagi/Siang (Wakasek) -->
                                     <div class="flex flex-col items-center">
                                         <p id="printJabatanMengetahui" class="font-semibold leading-tight min-h-[2.5rem] flex items-center justify-center px-1"></p>
@@ -669,7 +736,7 @@
                                     </div>
                                 </div>
                                 <!-- Baris bawah: Kepala Sekolah (tengah) -->
-                                <div class="flex justify-center text-sm text-center mt-6">
+                                <div class="flex justify-center text-sm text-center mt-6 avoid-break">
                                     <div class="flex flex-col items-center w-1/2">
                                         <p class="font-semibold leading-tight min-h-[2.5rem] flex items-center justify-center">Kepala Sekolah</p>
                                         <div class="h-16 w-full"></div>
@@ -686,56 +753,9 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- TAB 3: AI LAPORAN PIKET (GEMINI) -->
+        <!-- TAB 3: AKSES ADMIN & PENGATURAN -->
         <!-- ========================================== -->
-        <section id="tab-ailog" class="maintab-content hidden h-[calc(100vh-180px)] flex flex-col lg:flex-row gap-6">
-            <div class="w-full lg:w-1/3 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                <h3 class="font-bold text-lg text-slate-900 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-pen-to-square text-indigo-600"></i> Form Prompt AI
-                </h3>
-                <div class="space-y-4 flex-grow overflow-y-auto pr-2">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Kejadian Penting Harian</label>
-                        <textarea id="aiKejadian" rows="4" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500" placeholder="Ceritakan singkat kejadian hari ini. Contoh: Listrik padam jam 10, ada kunjungan pengawas dinas..."></textarea>
-                    </div>
-                    <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                        <p class="text-xs text-indigo-800 leading-relaxed"><i class="fa-solid fa-circle-info me-1"></i> Data statistik (kehadiran guru, siswa terlambat, izin, tamu) akan ditarik secara <strong>otomatis</strong> dari sistem E-Piket untuk digabungkan dengan cerita Anda.</p>
-                    </div>
-                </div>
-                <div class="pt-4 border-t border-slate-100 mt-2">
-                    <button onclick="generateAiReport()" class="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-bolt"></i> Generate Narasi Laporan
-                    </button>
-                </div>
-            </div>
-            
-            <div class="w-full lg:w-2/3 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
-                    <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-robot text-indigo-600"></i> Hasil Rumusan AI
-                    </h3>
-                    <button onclick="copyAiOutput()" class="bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium text-xs px-3 py-2 rounded-lg transition">
-                        <i class="fa-regular fa-copy me-1"></i> Salin Teks
-                    </button>
-                </div>
-                <div class="flex-grow bg-slate-50 border border-slate-200 rounded-lg p-5 relative overflow-y-auto">
-                    <div id="aiLoadingSpinner" class="hidden absolute inset-0 bg-white/90 z-10 flex flex-col items-center justify-center">
-                        <div class="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-indigo-600 mb-3"></div>
-                        <h5 class="text-slate-800 font-bold text-sm">Menghubungi Gemini AI...</h5>
-                    </div>
-                    <div id="aiEmptyState" class="h-full flex flex-col items-center justify-center text-slate-400">
-                        <i class="fa-regular fa-file-lines text-5xl mb-3"></i>
-                        <p class="text-sm">Belum ada laporan terbuat.</p>
-                    </div>
-                    <div id="aiOutputText" class="hidden text-sm text-slate-800 font-serif whitespace-pre-wrap leading-relaxed select-all"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ========================================== -->
-        <!-- TAB 4: AKSES ADMIN & PENGATURAN -->
-        <!-- ========================================== -->
-        <section id="tab-admin" class="maintab-content hidden h-[calc(100vh-180px)]">
+        <section id="tab-admin" class="maintab-content hidden app-fixed-height">
             <!-- Lock Screen -->
             <div id="adminLock" class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center flex flex-col items-center justify-center max-w-md mx-auto mt-10">
                 <div class="bg-red-50 text-red-500 p-5 rounded-full text-4xl mb-4"><i class="fa-solid fa-lock"></i></div>
@@ -755,6 +775,14 @@
                         <p class="text-xs text-slate-500 mt-1">Kelola data master (Reset atau Import Data Excel).</p>
                     </div>
                     <button onclick="lockAdmin()" class="bg-red-50 text-red-600 text-xs px-4 py-2 rounded border border-red-200 hover:bg-red-100 transition"><i class="fa-solid fa-lock-open me-2"></i>Kunci Kembali</button>
+                </div>
+
+                <!-- Pengumuman Aplikasi (tampil di layar Kode Akses) -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h4 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-bullhorn text-amber-500 mr-2"></i>Pengumuman Aplikasi</h4>
+                    <p class="text-xs text-slate-500 mb-3">Teks ini akan tampil di layar Kode Akses (sebelum login), digabung otomatis dengan info ulang tahun guru yang dihitung dari NIP. Kosongkan &amp; simpan untuk menghapus pengumuman.</p>
+                    <textarea id="adminPengumumanInput" rows="3" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500" placeholder="Contoh: Libur Hari Raya tanggal 25 Desember, sekolah diliburkan."></textarea>
+                    <button onclick="simpanPengumuman()" class="mt-3 bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-600 transition"><i class="fa-solid fa-save me-2"></i>Simpan Pengumuman</button>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1472,7 +1500,8 @@
             tamu: [],
             kbm: [], // Kontrol kelas
             apel: { status: 'Belum', jam: '-', pembina: '-', catatan: '-' },
-            guruKehadiran: {} 
+            guruKehadiran: {},
+            pengumuman: '' // Teks pengumuman yang diinput Admin, tampil di layar kode akses
         };
         
         let chartKbmInstance = null;
@@ -1482,6 +1511,103 @@
         // JADWAL MINGGUAN (HARI SENIN - SABTU)
         // ==========================================
         const HARI_LIST = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+        // Ambang batas pembagian shift pada modul Kontrol KBM:
+        // Jam ke-1 s/d KBM_BATAS_SHIFT_PAGI dianggap shift "Pagi", sisanya dianggap shift "Siang".
+        // Ubah angka ini jika pembagian jam pelajaran pagi/siang di sekolah berbeda.
+        const KBM_BATAS_SHIFT_PAGI = 5;
+
+        // Menentukan shift (Pagi/Siang) suatu jam pelajaran berdasarkan jam mulainya
+        function getShiftKbm(jamMulai) {
+            return jamMulai <= KBM_BATAS_SHIFT_PAGI ? 'Pagi' : 'Siang';
+        }
+
+        // ==========================================
+        // INFO ULANG TAHUN (dihitung otomatis dari NIP)
+        // Format NIP PNS standar: 8 digit pertama = tanggal lahir (YYYYMMDD)
+        // ==========================================
+        function parseTanggalLahirNip(nip) {
+            if (!nip) return null;
+            const digits = String(nip).replace(/\D/g, '');
+            if (digits.length < 8) return null;
+
+            const tahun = parseInt(digits.substring(0, 4), 10);
+            const bulan = parseInt(digits.substring(4, 6), 10);
+            const tanggal = parseInt(digits.substring(6, 8), 10);
+            const tahunSekarang = new Date().getFullYear();
+
+            if (bulan < 1 || bulan > 12 || tanggal < 1 || tanggal > 31) return null;
+            if (tahun < 1935 || tahun > tahunSekarang - 15) return null; // saring angka yang tidak masuk akal sebagai tahun lahir
+
+            return { tahun, bulan, tanggal };
+        }
+
+        // Mengembalikan daftar guru yang ulang tahun HARI INI (dihitung dari NIP)
+        function getUlangTahunMendatang() {
+            const hasil = [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            MASTER_GURU.forEach(g => {
+                const lahir = parseTanggalLahirNip(g.nip_nuptk);
+                if (!lahir) return;
+
+                if (lahir.bulan - 1 === today.getMonth() && lahir.tanggal === today.getDate()) {
+                    hasil.push({
+                        nama: g.nama_guru,
+                        usia: today.getFullYear() - lahir.tahun,
+                        diffDays: 0
+                    });
+                }
+            });
+
+            return hasil;
+        }
+
+        // Menyusun & menampilkan kotak Pengumuman + Info Ulang Tahun di layar kode akses
+        function renderLoginAnnouncement() {
+            const box = document.getElementById('loginAnnouncementBox');
+            const birthdayEl = document.getElementById('loginBirthdayInfo');
+            const pengumumanEl = document.getElementById('loginPengumumanText');
+            if (!box || !birthdayEl || !pengumumanEl) return;
+
+            const ultah = getUlangTahunMendatang();
+            const hariIni = ultah.filter(u => u.diffDays === 0);
+
+            let birthdayHtml = '';
+            if (hariIni.length > 0) {
+                birthdayHtml += `<p class="font-semibold text-amber-600 mb-1">🎉 Selamat ulang tahun hari ini:</p><ul class="list-disc pl-4 mb-2">${hariIni.map(u => `<li>${u.nama} (${u.usia} tahun)</li>`).join('')}</ul>`;
+            }
+            birthdayEl.innerHTML = birthdayHtml;
+
+            const pengumumanText = (appState.pengumuman || '').trim();
+            pengumumanEl.textContent = pengumumanText;
+            pengumumanEl.classList.toggle('hidden', !pengumumanText);
+            pengumumanEl.classList.toggle('pt-2', !!(pengumumanText && birthdayHtml));
+            pengumumanEl.classList.toggle('border-t', !!(pengumumanText && birthdayHtml));
+            pengumumanEl.classList.toggle('border-slate-200', !!(pengumumanText && birthdayHtml));
+
+            box.classList.toggle('hidden', !birthdayHtml && !pengumumanText);
+        }
+
+        // Ambil pengumuman & data guru (untuk hitung ulang tahun) SEBELUM kode akses dimasukkan,
+        // supaya bisa langsung tampil di layar kode akses. Gagal diam-diam (tanpa alert) kalau offline.
+        async function preloadInfoSebelumLogin() {
+            try {
+                const res = await fetch(`${APPS_SCRIPT_URL}?token=${encodeURIComponent(ACCESS_CODE)}`);
+                const data = await res.json();
+                if (data && data.appState && typeof data.appState.pengumuman === 'string') {
+                    appState.pengumuman = data.appState.pengumuman;
+                }
+                if (data && Array.isArray(data.masterGuru) && data.masterGuru.length > 0) {
+                    MASTER_GURU = data.masterGuru;
+                }
+            } catch (err) {
+                console.error('Gagal memuat pratinjau pengumuman di layar login:', err);
+            }
+            renderLoginAnnouncement();
+        }
+        document.addEventListener('DOMContentLoaded', preloadInfoSebelumLogin);
 
         // Mengembalikan nama hari sekolah untuk tanggal hari ini (Minggu dianggap Senin)
         function getHariIni() {
@@ -1572,6 +1698,21 @@
             location.reload();
         }
 
+        // Mode Tampilan manual (HP/Tablet/PC/Otomatis) — cadangan selain perbaikan responsif otomatis.
+        // Disimpan per perangkat di localStorage supaya tidak perlu dipilih ulang tiap buka aplikasi.
+        const VIEW_MODE_STORAGE_KEY = 'eduadmin_viewMode';
+        function setViewMode(mode) {
+            document.documentElement.setAttribute('data-view-mode', mode);
+            try { localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode); } catch (e) { /* abaikan */ }
+            const sel = document.getElementById('viewModeSelect');
+            if (sel && sel.value !== mode) sel.value = mode;
+        }
+        (function initViewModeOnLoad() {
+            let saved = 'auto';
+            try { saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY) || 'auto'; } catch (e) { /* abaikan */ }
+            document.addEventListener('DOMContentLoaded', () => setViewMode(saved));
+        })();
+
         // Saat halaman dibuka: kalau kode akses sudah pernah benar di device ini, langsung buka tanpa tanya lagi
         (function checkAutoUnlock() {
             let granted = false;
@@ -1653,20 +1794,6 @@
             }
         }
 
-        // Simpan API Key Gemini secara lokal per-perangkat (tidak perlu ikut disinkronkan ke Sheets)
-        function saveApiKeyToStorage() {
-            const val = document.getElementById('geminiApiKey').value;
-            try {
-                if (val) {
-                    localStorage.setItem('eduadmin_geminiApiKey', val);
-                } else {
-                    localStorage.removeItem('eduadmin_geminiApiKey');
-                }
-            } catch (err) {
-                console.error('Gagal menyimpan API Key:', err);
-            }
-        }
-
         // Tampilkan indikator "Tersimpan otomatis pada ..." di header
         function updateSaveIndicator() {
             const el = document.getElementById('autosaveIndicator');
@@ -1697,13 +1824,6 @@
             const laporanTanggalEl = document.getElementById('laporanTanggal');
             if (laporanTanggalEl) laporanTanggalEl.value = new Date().toISOString().slice(0, 10);
             renderLaporanKoordinatorOptions();
-
-            // Tampilkan API Key Gemini tersimpan (lokal per-perangkat)
-            const savedKey = localStorage.getItem('eduadmin_geminiApiKey');
-            if (savedKey) {
-                const keyEl = document.getElementById('geminiApiKey');
-                if (keyEl) keyEl.value = savedKey;
-            }
         }
 
         function initClock() {
@@ -1715,20 +1835,6 @@
                 clockEl.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second:'2-digit' });
                 dateEl.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             }, 1000);
-        }
-
-        function toggleApiKey() {
-            const input = document.getElementById('geminiApiKey');
-            const icon = document.getElementById('apiKeyIcon');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            } else {
-                input.type = 'password';
-                icon.classList.add('fa-eye-slash');
-                icon.classList.remove('fa-eye');
-            }
         }
 
         function switchMainTab(tabId) {
@@ -2128,6 +2234,16 @@
             saveState();
         }
 
+        // Mengisi ulang opsi dropdown filter Kelas pada modul Kontrol KBM sesuai kelas yang ada di jadwal hari terpilih
+        function renderKbmKelasFilterOptions(hari) {
+            const kelasFilterEl = document.getElementById('epKbmKelasFilter');
+            if (!kelasFilterEl) return;
+            const currentVal = kelasFilterEl.value;
+            const daftarKelas = [...new Set((JADWAL_MENGAJAR[hari] || []).map(k => k.kelas))].sort();
+            kelasFilterEl.innerHTML = '<option value="">Semua Kelas</option>' + daftarKelas.map(kls => `<option value="${kls}">${kls}</option>`).join('');
+            if (daftarKelas.includes(currentVal)) kelasFilterEl.value = currentVal;
+        }
+
         function renderKbmTable() {
             const kbmCont = document.getElementById('kbmContainer');
             const kosongCont = document.getElementById('kosongContainer');
@@ -2136,6 +2252,14 @@
             const hari = getSelectedHari('epKbmHari');
             const labelEl = document.getElementById('epKbmHariLabel');
             if (labelEl) labelEl.textContent = hari;
+
+            const batasShiftLabelEl = document.getElementById('epKbmBatasShiftLabel');
+            if (batasShiftLabelEl) batasShiftLabelEl.textContent = KBM_BATAS_SHIFT_PAGI;
+
+            renderKbmKelasFilterOptions(hari);
+            const shiftFilter = document.getElementById('epKbmShift') ? document.getElementById('epKbmShift').value : 'Semua';
+            const kelasFilter = document.getElementById('epKbmKelasFilter') ? document.getElementById('epKbmKelasFilter').value : '';
+
             const daftar = (JADWAL_MENGAJAR[hari] || []).map((k, idx) => Object.assign({}, k, { _idx: idx }))
                 .sort((a, b) => (a.jam_mulai - b.jam_mulai) || a.kelas.localeCompare(b.kelas));
 
@@ -2146,24 +2270,32 @@
                 return;
             }
 
+            let adaBarisTampil = false;
             daftar.forEach(k => {
                 const g = MASTER_GURU.find(x => x.id_guru === k.id_guru) || {};
                 const isAbsen = k.status === 'Tidak Hadir';
                 const opts = ['Hadir', 'Tidak Hadir'].map(o => `<option value="${o}" ${o === k.status ? 'selected' : ''}>${o}</option>`).join('');
                 const jamLabel = k.jam_mulai === k.jam_selesai ? `Jam ke-${k.jam_mulai}` : `Jam ke-${k.jam_mulai} s/d ${k.jam_selesai}`;
 
-                kbmCont.innerHTML += `
-                    <tr class="${isAbsen ? 'bg-rose-50/50' : ''}">
-                        <td class="p-3 border-b font-bold">${k.kelas} <span class="text-xs text-slate-400 font-normal">(${jamLabel})</span></td>
-                        <td class="p-3 border-b">${k.mapel}<br><span class="text-xs text-slate-500">${g.nama_guru || '-'}</span></td>
-                        <td class="p-3 border-b text-center">
-                            <select onchange="updateKbmStatus('${hari}', ${k._idx}, this.value)" class="text-xs border border-slate-200 rounded p-1">
-                                ${opts}
-                            </select>
-                        </td>
-                        <td class="p-3 border-b text-xs">${k.keterangan || '-'}</td>
-                    </tr>
-                `;
+                // Filter Shift & Kelas hanya memengaruhi tabel Kontrol KBM di bawah ini,
+                // sedangkan daftar "Kelas Kosong" tetap menampilkan semua kelas yang gurunya tidak hadir hari itu.
+                const shiftOk = shiftFilter === 'Semua' || getShiftKbm(k.jam_mulai) === shiftFilter;
+                const kelasOk = !kelasFilter || k.kelas === kelasFilter;
+                if (shiftOk && kelasOk) {
+                    adaBarisTampil = true;
+                    kbmCont.innerHTML += `
+                        <tr class="${isAbsen ? 'bg-rose-50/50' : ''}">
+                            <td class="p-3 border-b font-bold">${k.kelas} <span class="text-xs text-slate-400 font-normal">(${jamLabel})</span></td>
+                            <td class="p-3 border-b">${k.mapel}<br><span class="text-xs text-slate-500">${g.nama_guru || '-'}</span></td>
+                            <td class="p-3 border-b text-center">
+                                <select onchange="updateKbmStatus('${hari}', ${k._idx}, this.value)" class="text-xs border border-slate-200 rounded p-1">
+                                    ${opts}
+                                </select>
+                            </td>
+                            <td class="p-3 border-b text-xs">${k.keterangan || '-'}</td>
+                        </tr>
+                    `;
+                }
 
                 if (isAbsen) {
                     kosongCont.innerHTML += `
@@ -2175,6 +2307,10 @@
                     `;
                 }
             });
+
+            if (!adaBarisTampil) {
+                kbmCont.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-sm text-slate-400">Tidak ada jadwal yang sesuai dengan filter Shift/Kelas yang dipilih.</td></tr>`;
+            }
 
             if (kosongCont.innerHTML === '') {
                 kosongCont.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-sm text-slate-400">Tidak ada kelas kosong. 🎉</td></tr>';
@@ -2400,66 +2536,14 @@
                 margin:       0.5,
                 filename:     'Laporan_Piket.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
+                // mode 'css' membaca CSS page-break-inside/break-inside pada elemen ber-class .avoid-break
+                // sehingga bagian seperti "H. Pengesahan" (tanda tangan) tidak terpotong di antara 2 halaman PDF;
+                // jika tidak muat di halaman berjalan, seluruh blok akan otomatis dipindah ke halaman berikutnya.
+                pagebreak:    { mode: ['css', 'legacy'], avoid: ['.avoid-break', 'tr'] }
             };
             html2pdf().set(opt).from(element).save();
-        }
-
-        async function generateAiReport() {
-            const apiKey = document.getElementById('geminiApiKey').value;
-            if (!apiKey) {
-                Swal.fire('API Key Diperlukan', 'Silakan masukkan API Key Gemini di pojok kanan atas.', 'warning');
-                return;
-            }
-
-            const kejadianUser = document.getElementById('aiKejadian').value;
-            const dataStats = `
-                Siswa Terlambat: ${appState.terlambat.length} orang.
-                Siswa Izin Pulang: ${appState.izin.length} orang.
-                Tamu Hari Ini: ${appState.tamu.length} orang.
-                Status Apel: ${appState.apel.status}.
-            `;
-
-            const prompt = `Buatkan narasi laporan harian petugas piket sekolah dengan gaya bahasa profesional dan formal. 
-            Berikut adalah data statistik hari ini: ${dataStats}. 
-            Berikut adalah catatan kejadian khusus dari petugas: ${kejadianUser || 'Tidak ada kejadian khusus yang menonjol.'}. 
-            Buat laporannya dalam 3 paragraf singkat (Pembuka, Inti Kejadian/Statistik, Penutup).`;
-
-            document.getElementById('aiEmptyState').classList.add('hidden');
-            document.getElementById('aiOutputText').classList.add('hidden');
-            document.getElementById('aiLoadingSpinner').classList.remove('hidden');
-
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
-                });
-
-                if(!response.ok) throw new Error('API request failed');
-                
-                const data = await response.json();
-                const aiText = data.candidates[0].content.parts[0].text;
-                
-                document.getElementById('aiOutputText').textContent = aiText;
-                document.getElementById('aiOutputText').classList.remove('hidden');
-            } catch (error) {
-                Swal.fire('Error', 'Gagal menghasilkan laporan dari AI. Pastikan API Key valid dan koneksi internet stabil.', 'error');
-                document.getElementById('aiEmptyState').classList.remove('hidden');
-            } finally {
-                document.getElementById('aiLoadingSpinner').classList.add('hidden');
-            }
-        }
-
-        function copyAiOutput() {
-            const text = document.getElementById('aiOutputText').textContent;
-            if(!text) return;
-            navigator.clipboard.writeText(text).then(() => {
-                Swal.fire({icon: 'success', title: 'Tersalin!', timer: 1000, showConfirmButton: false});
-            });
         }
 
         function unlockAdmin() {
@@ -2470,9 +2554,20 @@
                 document.getElementById('adminPin').value = '';
                 renderPiketAssignmentAdmin();
                 renderKbmAdminForm();
+                const pengumumanEl = document.getElementById('adminPengumumanInput');
+                if (pengumumanEl) pengumumanEl.value = appState.pengumuman || '';
             } else {
                 Swal.fire('Akses Ditolak', 'PIN tidak valid.', 'error');
             }
+        }
+
+        // Simpan teks Pengumuman Aplikasi (tampil di layar Kode Akses) ke Google Sheets
+        function simpanPengumuman() {
+            const el = document.getElementById('adminPengumumanInput');
+            if (!el) return;
+            appState.pengumuman = el.value;
+            saveState();
+            Swal.fire({ icon: 'success', title: 'Pengumuman Disimpan', text: 'Perubahan akan tampil di layar Kode Akses.', timer: 1800, showConfirmButton: false });
         }
 
         function lockAdmin() {
@@ -2805,7 +2900,6 @@
                     } catch (err) {
                         console.error('Gagal menghapus data di Google Sheets:', err);
                     }
-                    localStorage.removeItem('eduadmin_geminiApiKey');
                     localStorage.removeItem(ACCESS_STORAGE_KEY);
                     location.reload();
                 }
