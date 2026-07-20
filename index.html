@@ -721,7 +721,7 @@
                         <h3 class="text-xl font-bold text-slate-800">Riwayat &amp; Rekap Bulanan</h3>
                         <div class="flex flex-wrap items-center gap-2 shrink-0">
                             <label class="text-xs font-semibold text-slate-500">Bulan:</label>
-                            <input type="month" id="epRekapBulan" onchange="renderRekapBulanan('epRekapBulan','epRekapTableBody','epRekapChart')" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500">
+                            <input type="month" id="epRekapBulan" onchange="renderRekapBulanan('epRekapBulan','epRekapTableBody','epRekapChart','epRekapGuruTableBody')" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500">
                             <button onclick="exportRekapBulananExcel('epRekapBulan')" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition"><i class="fa-solid fa-file-excel me-1"></i>Export Excel</button>
                         </div>
                     </div>
@@ -745,6 +745,31 @@
                             </thead>
                             <tbody id="epRekapTableBody" class="divide-y divide-slate-100"></tbody>
                         </table>
+                    </div>
+
+                    <!-- Sub-modul: Persentase Kehadiran Mengajar per Guru (bulanan) -->
+                    <div class="border-t border-slate-100 pt-4 mt-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                            <div>
+                                <h4 class="text-lg font-bold text-slate-800">Persentase Kehadiran Mengajar per Guru</h4>
+                                <p class="text-xs text-slate-500">Dihitung dari hari-hari guru tersebut punya jadwal mengajar pada bulan terpilih. <span class="font-semibold">Kepala Sekolah tidak dimasukkan dalam persentase ini</span> — JP Kepala Sekolah ditetapkan tetap 24 JP.</p>
+                            </div>
+                            <button onclick="exportKehadiranMengajarExcel('epRekapBulan')" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition shrink-0"><i class="fa-solid fa-file-excel me-1"></i>Export Excel</button>
+                        </div>
+                        <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-slate-50 text-slate-600">
+                                    <tr>
+                                        <th class="p-2 border-b">Nama Guru</th>
+                                        <th class="p-2 border-b text-center">JP</th>
+                                        <th class="p-2 border-b text-center">Hari Hadir Mengajar</th>
+                                        <th class="p-2 border-b text-center">Hari Terjadwal</th>
+                                        <th class="p-2 border-b text-center">% Kehadiran</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="epRekapGuruTableBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -1049,7 +1074,7 @@
                     <h3 class="text-lg font-bold text-slate-800">Riwayat &amp; Rekap Bulanan</h3>
                     <div class="flex flex-wrap items-center gap-2 shrink-0">
                         <label class="text-xs font-semibold text-slate-500">Bulan:</label>
-                        <input type="month" id="kepsekRekapBulan" onchange="renderRekapBulanan('kepsekRekapBulan','kepsekRekapTableBody','kepsekRekapChart')" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500">
+                        <input type="month" id="kepsekRekapBulan" onchange="renderRekapBulanan('kepsekRekapBulan','kepsekRekapTableBody','kepsekRekapChart','kepsekRekapGuruTableBody')" class="border border-slate-300 rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500">
                     </div>
                 </div>
                 <div class="border border-slate-100 rounded-xl p-4 shadow-sm h-64 relative">
@@ -1071,6 +1096,26 @@
                         </thead>
                         <tbody id="kepsekRekapTableBody" class="divide-y divide-slate-100"></tbody>
                     </table>
+                </div>
+
+                <!-- Sub-modul: Persentase Kehadiran Mengajar per Guru (bulanan) -->
+                <div class="border-t border-slate-100 pt-4 mt-2">
+                    <h4 class="text-base font-bold text-slate-800">Persentase Kehadiran Mengajar per Guru</h4>
+                    <p class="text-xs text-slate-500 mb-2">Dihitung dari hari-hari guru tersebut punya jadwal mengajar pada bulan terpilih. <span class="font-semibold">Kepala Sekolah tidak dimasukkan dalam persentase ini</span> — JP Kepala Sekolah ditetapkan tetap 24 JP.</p>
+                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="p-2 border-b">Nama Guru</th>
+                                    <th class="p-2 border-b text-center">JP</th>
+                                    <th class="p-2 border-b text-center">Hari Hadir Mengajar</th>
+                                    <th class="p-2 border-b text-center">Hari Terjadwal</th>
+                                    <th class="p-2 border-b text-center">% Kehadiran</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kepsekRekapGuruTableBody" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -2106,7 +2151,7 @@
             if (modId === 'laporan') {
                 renderLaporanKoordinatorOptions();
             } else if (modId === 'rekap') {
-                renderRekapBulanan('epRekapBulan', 'epRekapTableBody', 'epRekapChart');
+                renderRekapBulanan('epRekapBulan', 'epRekapTableBody', 'epRekapChart', 'epRekapGuruTableBody');
             } else if (modId === 'guru-mengajar') {
                 generateGuruMengajarList();
             }
@@ -2169,7 +2214,7 @@
             
             // Hitung JP dan Kelas
             const tugasMengajar = TUGAS_MENGAJAR.filter(t => t.id_guru === id_guru);
-            const totalJp = tugasMengajar.reduce((sum, current) => sum + current.jumlah_jam, 0);
+            const totalJp = getTotalJpGuru(id_guru);
             const kelasDiampu = [...new Set(tugasMengajar.map(t => t.kelas))].join(', ');
 
             document.getElementById('dtTotalJp').textContent = totalJp;
@@ -2703,7 +2748,11 @@
             if (kepsekTerlambatEl) kepsekTerlambatEl.textContent = appState.terlambat.length;
 
             // Simpan snapshot hari ini untuk fitur Riwayat & Rekap Bulanan
-            snapshotRiwayatHarian(hadir, idsPiketHariIni.length, kosong, hadirMengajar, idsMengajarHariIni.length);
+            const kehadiranGuruMengajarHariIni = {};
+            idsMengajarHariIni.forEach(id => {
+                kehadiranGuruMengajarHariIni[id] = (appState.guruMengajarKehadiran[id] && appState.guruMengajarKehadiran[id].status) || 'Hadir';
+            });
+            snapshotRiwayatHarian(hadir, idsPiketHariIni.length, kosong, hadirMengajar, idsMengajarHariIni.length, kehadiranGuruMengajarHariIni);
         }
 
         // ==========================================
@@ -2712,7 +2761,7 @@
 
         // Simpan ringkasan data hari ini ke appState.riwayatHarian (dipanggil tiap kali dashboard diperbarui).
         // Hanya menyimpan ke server (saveState) kalau ada perubahan, supaya tidak boros request.
-        function snapshotRiwayatHarian(hadir, totalPiket, kosong, hadirMengajar, totalMengajar) {
+        function snapshotRiwayatHarian(hadir, totalPiket, kosong, hadirMengajar, totalMengajar, kehadiranGuruMengajar) {
             if (!appState.riwayatHarian) appState.riwayatHarian = {};
             const tanggalKey = new Date().toISOString().slice(0, 10);
             const next = {
@@ -2722,6 +2771,7 @@
                 guruTotal: totalPiket,
                 guruMengajarHadir: hadirMengajar || 0,
                 guruMengajarTotal: totalMengajar || 0,
+                kehadiranGuruMengajar: kehadiranGuruMengajar || {}, // { idGuru: 'Hadir'|'Izin'|'Sakit'|'Alpa', ... } — dasar hitung % kehadiran mengajar per guru
                 statusApel: appState.apel.status,
                 kelasKosong: kosong,
                 terlambat: appState.terlambat.length,
@@ -2746,8 +2796,8 @@
         let rekapChartInstances = {};
 
         // Render tabel + grafik Rekap Bulanan. Dipakai bersama oleh modul E-Piket > Rekap Bulanan
-        // dan tab Dashboard Kepsek (cukup beda ID input bulan / tabel / canvas grafik).
-        function renderRekapBulanan(bulanInputId, tableBodyId, chartCanvasId) {
+        // dan tab Dashboard Kepsek (cukup beda ID input bulan / tabel / canvas grafik / tabel per-guru).
+        function renderRekapBulanan(bulanInputId, tableBodyId, chartCanvasId, guruTableBodyId) {
             const bulanEl = document.getElementById(bulanInputId);
             if (!bulanEl) return;
             if (!bulanEl.value) {
@@ -2800,6 +2850,78 @@
                     });
                 }
             }
+
+            if (guruTableBodyId) renderKehadiranMengajarGuru(rows, guruTableBodyId);
+        }
+
+        // Hitung persentase kehadiran mengajar tiap guru untuk baris-baris riwayat (satu bulan) yang diberikan.
+        // Kepala Sekolah SENGAJA tidak dihitung dalam persentase ini (JP-nya tetap ditetapkan 24 JP terpisah).
+        function computeKehadiranMengajarPerGuru(rows) {
+            const kepsek = getKepalaSekolah();
+            const stats = {}; // idGuru -> { hadir, total }
+
+            rows.forEach(r => {
+                const kg = r.kehadiranGuruMengajar || {};
+                Object.keys(kg).forEach(idGuru => {
+                    if (kepsek && idGuru === kepsek.id_guru) return; // kecualikan Kepala Sekolah
+                    if (!stats[idGuru]) stats[idGuru] = { hadir: 0, total: 0 };
+                    stats[idGuru].total++;
+                    if (kg[idGuru] === 'Hadir') stats[idGuru].hadir++;
+                });
+            });
+
+            return Object.keys(stats).map(idGuru => {
+                const guru = MASTER_GURU.find(g => g.id_guru === idGuru);
+                const { hadir, total } = stats[idGuru];
+                const persen = total > 0 ? Math.round((hadir / total) * 1000) / 10 : 0;
+                return { idGuru, nama: guru ? guru.nama_guru : idGuru, jp: getTotalJpGuru(idGuru), hadir, total, persen };
+            }).sort((a, b) => a.nama.localeCompare(b.nama));
+        }
+
+        // Render tabel Persentase Kehadiran Mengajar per Guru ke tbody yang diberikan
+        function renderKehadiranMengajarGuru(rows, guruTableBodyId) {
+            const tbody = document.getElementById(guruTableBodyId);
+            if (!tbody) return;
+
+            const daftar = computeKehadiranMengajarPerGuru(rows);
+            if (daftar.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-sm text-slate-400">Belum ada data kehadiran mengajar untuk bulan ini.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = daftar.map(g => {
+                const badgeClass = g.persen >= 90 ? 'bg-emerald-100 text-emerald-700' : g.persen >= 75 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
+                return `
+                    <tr>
+                        <td class="p-2 border-b font-semibold">${g.nama}</td>
+                        <td class="p-2 border-b text-center">${g.jp}</td>
+                        <td class="p-2 border-b text-center">${g.hadir}</td>
+                        <td class="p-2 border-b text-center">${g.total}</td>
+                        <td class="p-2 border-b text-center"><span class="px-2 py-0.5 rounded-full text-xs font-bold ${badgeClass}">${g.persen}%</span></td>
+                    </tr>`;
+            }).join('');
+        }
+
+        // Export tabel Persentase Kehadiran Mengajar per Guru ke file Excel (.xlsx)
+        function exportKehadiranMengajarExcel(bulanInputId) {
+            const bulanEl = document.getElementById(bulanInputId);
+            const rows = getBulanRows(bulanEl ? bulanEl.value : '');
+            const daftar = computeKehadiranMengajarPerGuru(rows);
+            if (daftar.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Belum Ada Data', text: 'Belum ada data kehadiran mengajar untuk bulan yang dipilih.' });
+                return;
+            }
+            const dataExcel = daftar.map(g => ({
+                'Nama Guru': g.nama,
+                'JP': g.jp,
+                'Hari Hadir Mengajar': g.hadir,
+                'Hari Terjadwal': g.total,
+                '% Kehadiran': g.persen
+            }));
+            const ws = XLSX.utils.json_to_sheet(dataExcel);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Kehadiran Mengajar');
+            XLSX.writeFile(wb, `Kehadiran-Mengajar-Guru-${bulanEl.value}.xlsx`);
         }
 
         // Export tabel Rekap Bulanan ke file Excel (.xlsx)
@@ -2832,7 +2954,7 @@
         // Render tab Dashboard Kepsek: kartu ringkasan hari ini (via updateEpiketDashboard) + rekap bulanan
         function renderDashboardKepsek() {
             updateEpiketDashboard();
-            renderRekapBulanan('kepsekRekapBulan', 'kepsekRekapTableBody', 'kepsekRekapChart');
+            renderRekapBulanan('kepsekRekapBulan', 'kepsekRekapTableBody', 'kepsekRekapChart', 'kepsekRekapGuruTableBody');
         }
 
         function initCharts() {
@@ -2879,6 +3001,14 @@
             return MASTER_GURU.find(g => g.tugas_tambahan === 'Kepala Sekolah')
                 || MASTER_GURU.find(g => (g.tugas_tambahan || '').includes('Kepala Sekolah'))
                 || null;
+        }
+
+        // Jumlah Jam Pelajaran (JP) seorang guru. Kepala Sekolah tidak punya jadwal mengajar rutin di
+        // TUGAS_MENGAJAR/JADWAL_MENGAJAR, tetapi sesuai ketentuan tetap dihitung 24 JP.
+        function getTotalJpGuru(idGuru) {
+            const kepsek = getKepalaSekolah();
+            if (kepsek && kepsek.id_guru === idGuru) return 24;
+            return TUGAS_MENGAJAR.filter(t => t.id_guru === idGuru).reduce((sum, t) => sum + t.jumlah_jam, 0);
         }
 
         // Isi ulang dropdown Koordinator Piket (penandatangan) sesuai sesi & hari terpilih di panel Pengesahan Laporan
