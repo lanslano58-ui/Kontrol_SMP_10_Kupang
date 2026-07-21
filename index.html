@@ -120,6 +120,7 @@
         .role-readonly #formApelPagi button,
         .role-readonly #piketContainer select,
         .role-readonly #guruMengajarContainer select,
+        .role-readonly #laporanCatatanKejadian,
         .role-readonly #kosongContainer select,
         .role-readonly #kosongContainer button,
         .role-readonly #kosongContainer input,
@@ -379,24 +380,25 @@
                         <select id="jadwalHariSelect" onchange="renderJadwalPelajaranTab()" class="border border-slate-300 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-blue-500"></select>
                     </div>
                 </div>
-                <div class="relative mb-4 max-w-sm">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-magnifying-glass text-sm"></i></span>
-                    <input type="text" id="cariJadwalGuru" oninput="renderJadwalPelajaranTab()" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Cari nama guru, kelas, atau mapel...">
+
+                <!-- Toolbar: pencarian + filter kelas + ringkasan cepat -->
+                <div class="flex flex-col md:flex-row gap-3 mb-4">
+                    <div class="relative flex-1 md:max-w-sm">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-magnifying-glass text-sm"></i></span>
+                        <input type="text" id="cariJadwalGuru" oninput="renderJadwalPelajaranTab()" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Cari nama guru, kelas, atau mapel...">
+                    </div>
+                    <div class="flex gap-2 items-center shrink-0">
+                        <label class="text-xs font-semibold text-slate-500 whitespace-nowrap">Kelas:</label>
+                        <select id="jadwalKelasFilter" onchange="renderJadwalPelajaranTab()" class="border border-slate-300 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-blue-500 flex-1 md:flex-none">
+                            <option value="">Semua Kelas</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="overflow-x-auto border border-slate-200 rounded-lg">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
-                        <thead class="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th class="p-3 border-b border-slate-200">Jam Ke</th>
-                                <th class="p-3 border-b border-slate-200">Kelas</th>
-                                <th class="p-3 border-b border-slate-200">Guru</th>
-                                <th class="p-3 border-b border-slate-200">Mata Pelajaran</th>
-                                <th class="p-3 border-b border-slate-200 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="jadwalPelajaranContainer" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
+
+                <div id="jadwalPelajaranSummary" class="flex flex-wrap gap-2 mb-4"></div>
+
+                <!-- Wadah kartu jadwal (dikelompokkan per kelas, ramah untuk HP maupun PC) -->
+                <div id="jadwalPelajaranContainer" class="space-y-4"></div>
             </div>
         </section>
 
@@ -741,6 +743,7 @@
                                     <th class="p-2 border-b text-center">Terlambat</th>
                                     <th class="p-2 border-b text-center">Izin</th>
                                     <th class="p-2 border-b text-center">Tamu</th>
+                                    <th class="p-2 border-b text-center">Detail</th>
                                 </tr>
                             </thead>
                             <tbody id="epRekapTableBody" class="divide-y divide-slate-100"></tbody>
@@ -786,7 +789,7 @@
                     <!-- Pengaturan & Pengesahan Laporan -->
                     <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3 print:hidden">
                         <h4 class="font-bold text-sm text-slate-700 flex items-center gap-2"><i class="fa-solid fa-file-signature text-blue-600"></i> Pengaturan &amp; Pengesahan Laporan</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">Sesi Piket</label>
                                 <select id="laporanSesi" onchange="onLaporanSesiChange()" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-blue-500">
@@ -806,8 +809,21 @@
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">Koordinator Piket (Penandatangan)</label>
                                 <select id="laporanKoordinatorPiket" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500"></select>
                             </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Ukuran Kertas</label>
+                                <select id="laporanUkuranKertas" onchange="onLaporanUkuranKertasChange()" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-blue-500">
+                                    <option value="a4">A4 (210 x 297 mm)</option>
+                                    <option value="f4">F4 / Folio (215 x 330 mm)</option>
+                                    <option value="legal">Legal (215.9 x 355.6 mm)</option>
+                                    <option value="letter">Letter (215.9 x 279.4 mm)</option>
+                                </select>
+                            </div>
                         </div>
-                        <p class="text-xs text-slate-500"><i class="fa-solid fa-circle-info me-1"></i>Baris "Mengetahui" otomatis mengikuti sesi terpilih: <span id="laporanMengetahuiPreview" class="font-semibold text-slate-700"></span>. Pilihan Koordinator Piket diambil dari petugas piket sesi &amp; hari terkait (Admin &gt; Kelola Petugas Piket).</p>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Catatan Kejadian Piket (Sesi Terpilih) — diisi petugas piket, tampil di laporan bagian D</label>
+                            <textarea id="laporanCatatanKejadian" onchange="simpanCatatanKejadian()" rows="2" placeholder="Tuliskan kejadian penting hari ini yang perlu dicatat (jika ada). Kosongkan jika tidak ada." class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500"></textarea>
+                        </div>
+                        <p class="text-xs text-slate-500"><i class="fa-solid fa-circle-info me-1"></i>Baris "Mengetahui" otomatis mengikuti sesi terpilih: <span id="laporanMengetahuiPreview" class="font-semibold text-slate-700"></span>. Pilihan Koordinator Piket diambil dari petugas piket sesi &amp; hari terkait (Admin &gt; Kelola Petugas Piket). Data Siswa Terlambat, Izin Pulang, dan Buku Tamu pada laporan otomatis dipisah sesuai jam kejadian (sebelum pukul 12:00 = Piket Pagi, setelah = Piket Siang).</p>
                     </div>
                     <div id="printArea" class="bg-white border border-slate-200 p-8 shadow-sm print:shadow-none">
                         <div class="text-center border-b-2 border-black pb-4 mb-4">
@@ -818,7 +834,7 @@
                         </div>
                         <div class="space-y-4 text-sm">
                             <div>
-                                <h4 class="font-bold border-b border-dashed border-slate-300">A. Status Kehadiran Guru</h4>
+                                <h4 class="font-bold border-b border-dashed border-slate-300">A. Status Kehadiran Guru Piket</h4>
                                 <ul class="list-disc pl-5 mt-1" id="printPiket"></ul>
                             </div>
                             <div>
@@ -833,18 +849,22 @@
                                 <h4 class="font-bold border-b border-dashed border-slate-300">C2. Kelas dengan Guru Tidak Hadir</h4>
                                 <ul class="list-decimal pl-5 mt-1" id="printKelasKosong"></ul>
                             </div>
+                            <div>
+                                <h4 class="font-bold border-b border-dashed border-slate-300">D. Catatan Kejadian Piket <span id="printCatatanSesiLabel"></span></h4>
+                                <p class="mt-1" id="printCatatanKejadian">Nihil, tidak ada kejadian khusus.</p>
+                            </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <h4 class="font-bold border-b border-dashed border-slate-300">E. Siswa Terlambat</h4>
+                                    <h4 class="font-bold border-b border-dashed border-slate-300">E. Siswa Terlambat <span id="printTerlambatSesiLabel"></span></h4>
                                     <ul class="list-decimal pl-5 mt-1" id="printTerlambat"></ul>
                                 </div>
                                 <div>
-                                    <h4 class="font-bold border-b border-dashed border-slate-300">F. Izin Pulang</h4>
+                                    <h4 class="font-bold border-b border-dashed border-slate-300">F. Izin Pulang <span id="printIzinSesiLabel"></span></h4>
                                     <ul class="list-decimal pl-5 mt-1" id="printIzin"></ul>
                                 </div>
                             </div>
                             <div>
-                                <h4 class="font-bold border-b border-dashed border-slate-300">G. Buku Tamu</h4>
+                                <h4 class="font-bold border-b border-dashed border-slate-300">G. Buku Tamu <span id="printTamuSesiLabel"></span></h4>
                                 <ul class="list-decimal pl-5 mt-1" id="printTamu"></ul>
                             </div>
 
@@ -1015,21 +1035,11 @@
                             <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition"><i class="fa-solid fa-plus mr-1"></i>Tambah</button>
                         </div>
                     </form>
-                    <p class="text-xs text-slate-500 mb-2">Menampilkan jadwal untuk hari: <span id="adminKbmHariLabel" class="font-semibold"></span></p>
-                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
-                        <table class="w-full text-left text-sm whitespace-nowrap">
-                            <thead class="bg-slate-50 text-slate-600">
-                                <tr>
-                                    <th class="p-2 border-b">Kelas</th>
-                                    <th class="p-2 border-b">Jam Ke</th>
-                                    <th class="p-2 border-b">Guru</th>
-                                    <th class="p-2 border-b">Mapel</th>
-                                    <th class="p-2 border-b text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="kbmJadwalAdminContainer" class="divide-y divide-slate-100"></tbody>
-                        </table>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <p class="text-xs text-slate-500">Menampilkan jadwal untuk hari: <span id="adminKbmHariLabel" class="font-semibold"></span> — dikelompokkan per kelas biar mudah dibaca seperti jadwal pelajaran di papan sekolah.</p>
+                        <div id="adminKbmSummary" class="flex flex-wrap gap-2"></div>
                     </div>
+                    <div id="kbmJadwalAdminContainer" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
                 </div>
             </div>
         </section>
@@ -1092,6 +1102,7 @@
                                 <th class="p-2 border-b text-center">Terlambat</th>
                                 <th class="p-2 border-b text-center">Izin</th>
                                 <th class="p-2 border-b text-center">Tamu</th>
+                                <th class="p-2 border-b text-center">Detail</th>
                             </tr>
                         </thead>
                         <tbody id="kepsekRekapTableBody" class="divide-y divide-slate-100"></tbody>
@@ -1711,7 +1722,8 @@
 			{ "id_mengajar": "M391", "id_guru": "DB08", "mata_pelajaran": "PKn", "kelas": "IX G", "jumlah_jam": 3 },
 			{ "id_mengajar": "M392", "id_guru": "DB08", "mata_pelajaran": "PKn", "kelas": "IX H", "jumlah_jam": 3 },
 			{ "id_mengajar": "M393", "id_guru": "DB06", "mata_pelajaran": "Seni Budaya", "kelas": "VIII G", "jumlah_jam": 3 },
-			{ "id_mengajar": "M394", "id_guru": "DB06", "mata_pelajaran": "Seni Budaya", "kelas": "VIII H", "jumlah_jam": 3 }
+			{ "id_mengajar": "M394", "id_guru": "DB06", "mata_pelajaran": "Seni Budaya", "kelas": "VIII H", "jumlah_jam": 3 },
+			{ "id_mengajar": "M395", "id_guru": "DB64", "mata_pelajaran": "Informatika", "kelas": "IX K", "jumlah_jam": 5 }
         ];
 
         // State management untuk aplikasi E-Piket harian
@@ -1723,8 +1735,10 @@
             apel: { status: 'Belum', jam: '-', pembina: '-', catatan: '-' },
             guruKehadiran: {}, // Kehadiran GURU PIKET (petugas piket pagi/siang, sesuai PIKET_ASSIGNMENT)
             guruMengajarKehadiran: {}, // Kehadiran GURU MENGAJAR (guru dengan jadwal KBM hari ini, sesuai JADWAL_MENGAJAR) — terpisah dari guru piket
+            catatanKejadian: { pagi: '', siang: '' }, // Catatan kejadian harian, diisi petugas piket, dipisah per sesi Pagi/Siang
             pengumuman: '', // Teks pengumuman yang diinput Admin, tampil di layar kode akses
-            riwayatHarian: {} // Snapshot data tiap hari (key: 'YYYY-MM-DD') untuk fitur Rekap Bulanan
+            riwayatHarian: {}, // Snapshot data tiap hari (key: 'YYYY-MM-DD') untuk fitur Rekap Bulanan
+            tanggalAktifTerakhir: null // Tanggal (YYYY-MM-DD) terakhir data E-Piket ini aktif dipakai — dasar deteksi pergantian hari untuk auto-reset
         };
         
         let chartKbmInstance = null;
@@ -1743,6 +1757,15 @@
         // Menentukan shift (Pagi/Siang) suatu jam pelajaran berdasarkan jam mulainya
         function getShiftKbm(jamMulai) {
             return jamMulai <= KBM_BATAS_SHIFT_PAGI ? 'Pagi' : 'Siang';
+        }
+
+        // Ambang batas jam (format "HH:MM") untuk memisahkan kejadian (siswa terlambat/izin pulang/tamu)
+        // ke sesi Piket Pagi atau Piket Siang berdasarkan waktu kejadian diinput. Ubah jika jam pergantian
+        // sesi piket di sekolah berbeda.
+        const BATAS_JAM_SESI_SIANG = '12:00';
+        function getSesiDariJam(jamStr) {
+            if (!jamStr) return 'Pagi';
+            return jamStr < BATAS_JAM_SESI_SIANG ? 'Pagi' : 'Siang';
         }
 
         // ==========================================
@@ -1839,6 +1862,25 @@
             return map[idx] || "Senin";
         }
 
+        // Kunci tanggal (YYYY-MM-DD) berdasarkan WAKTU LOKAL perangkat, bukan UTC.
+        // Sengaja tidak pakai new Date().toISOString() karena untuk zona waktu Indonesia (UTC+7/8/9)
+        // itu bisa "telat" menganggap hari masih kemarin sampai beberapa jam setelah tengah malam lokal.
+        function getTanggalKeyLokal(d) {
+            d = d || new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const tgl = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${tgl}`;
+        }
+
+        // Mengembalikan nama hari sekolah untuk sebuah tanggal (YYYY-MM-DD) tertentu, bukan hanya hari ini.
+        // Dipakai saat menyimpan snapshot data hari SEBELUMNYA ketika pergantian hari terdeteksi.
+        function getNamaHariDariTanggal(tanggalKey) {
+            const idx = new Date(tanggalKey + 'T00:00:00').getDay();
+            const map = { 1: "Senin", 2: "Selasa", 3: "Rabu", 4: "Kamis", 5: "Jumat", 6: "Sabtu" };
+            return map[idx] || "Senin";
+        }
+
         // Membuat opsi <option> hari dengan opsi hari ini terpilih otomatis
         function buildHariOptions(selectedDay) {
             return HARI_LIST.map(h => `<option value="${h}" ${h === selectedDay ? 'selected' : ''}>${h}</option>`).join('');
@@ -1891,7 +1933,6 @@
             { code: "piket10",       role: "guru",     label: "AdminGuru Piket (Lihat-saja)" },
             { code: "piket10kepsek", role: "kepsek",   label: "Kepala Sekolah (Lihat-saja)" }
         ];
-        const ROLE_STORAGE_KEY = 'eduadmin_role';
         let currentRole = 'admin';
 
         // Tab utama yang boleh diakses tiap peran. Peran "kepsek" hanya diarahkan ke dashboard khususnya.
@@ -1907,7 +1948,6 @@
         const READONLY_BLOCKED_MODALS = ['modalTerlambat', 'modalIzin', 'modalTamu'];
 
         let _saveDebounceTimer = null;
-        const ACCESS_STORAGE_KEY = 'eduadmin_accessGranted';
 
         // Cek kode akses yang diketik user terhadap ACCESS_CODE. Kalau cocok, buka aplikasi & muat data.
         async function checkAccessCode() {
@@ -1921,11 +1961,6 @@
                 return;
             }
             currentRole = matchedRole.role;
-
-            try {
-                localStorage.setItem(ACCESS_STORAGE_KEY, '1');
-                localStorage.setItem(ROLE_STORAGE_KEY, currentRole);
-            } catch (e) { /* abaikan jika localStorage tidak tersedia */ }
 
             await unlockApp();
         }
@@ -1949,10 +1984,6 @@
 
         // Kunci ulang aplikasi (kembali ke layar kode akses) — tidak menghapus data di Sheets
         function logoutApp() {
-            try {
-                localStorage.removeItem(ACCESS_STORAGE_KEY);
-                localStorage.removeItem(ROLE_STORAGE_KEY);
-            } catch (e) {}
             location.reload();
         }
 
@@ -1991,17 +2022,9 @@
             document.addEventListener('DOMContentLoaded', () => setViewMode(saved));
         })();
 
-        // Saat halaman dibuka: kalau kode akses sudah pernah benar di device ini, langsung buka tanpa tanya lagi
-        (function checkAutoUnlock() {
-            let granted = false;
-            try {
-                granted = localStorage.getItem(ACCESS_STORAGE_KEY) === '1';
-                currentRole = localStorage.getItem(ROLE_STORAGE_KEY) || 'admin';
-            } catch (e) {}
-            if (granted) {
-                document.addEventListener('DOMContentLoaded', unlockApp);
-            }
-        })();
+        // Setiap kali halaman dibuka/refresh, layar kode akses SELALU ditampilkan lagi —
+        // tidak ada auto-unlock berdasarkan localStorage. Pengguna (termasuk Guru Piket)
+        // wajib memasukkan kode akses setiap kali membuka aplikasi.
 
         // ==========================================
         // PENYIMPANAN DATA (Google Sheets via Apps Script)
@@ -2089,6 +2112,8 @@
         // Dipanggil setelah kode akses benar: muat data lalu render seluruh aplikasi
         async function bootApp() {
             await loadState(); // Muat data tersimpan dari Google Sheets sebelum render apapun
+            cekPergantianHari(); // Deteksi & auto-reset data E-Piket kalau tanggal sudah berganti sejak terakhir dibuka
+            mulaiCekPergantianHariBerkala(); // Terus cek tiap menit kalau aplikasi dibiarkan terbuka lewat tengah malam
             initHariSelectors(); // Isi semua dropdown hari (default: hari ini)
             initClock();
             renderGuruList();
@@ -2106,6 +2131,8 @@
             const laporanTanggalEl = document.getElementById('laporanTanggal');
             if (laporanTanggalEl) laporanTanggalEl.value = new Date().toISOString().slice(0, 10);
             renderLaporanKoordinatorOptions();
+            muatCatatanKejadian();
+            onLaporanUkuranKertasChange();
         }
 
         function initClock() {
@@ -2150,6 +2177,8 @@
 
             if (modId === 'laporan') {
                 renderLaporanKoordinatorOptions();
+                muatCatatanKejadian();
+                onLaporanUkuranKertasChange();
             } else if (modId === 'rekap') {
                 renderRekapBulanan('epRekapBulan', 'epRekapTableBody', 'epRekapChart', 'epRekapGuruTableBody');
             } else if (modId === 'guru-mengajar') {
@@ -2761,9 +2790,12 @@
 
         // Simpan ringkasan data hari ini ke appState.riwayatHarian (dipanggil tiap kali dashboard diperbarui).
         // Hanya menyimpan ke server (saveState) kalau ada perubahan, supaya tidak boros request.
+        // Selain angka ringkasan, disimpan juga detail lengkapnya (nama siswa terlambat/izin, buku tamu, dst)
+        // supaya data hari ini TETAP bisa dibuka lagi lewat tombol "Detail" di Rekap Bulanan, termasuk setelah
+        // nanti direset otomatis saat hari berganti (lihat cekPergantianHari()).
         function snapshotRiwayatHarian(hadir, totalPiket, kosong, hadirMengajar, totalMengajar, kehadiranGuruMengajar) {
             if (!appState.riwayatHarian) appState.riwayatHarian = {};
-            const tanggalKey = new Date().toISOString().slice(0, 10);
+            const tanggalKey = getTanggalKeyLokal();
             const next = {
                 tanggal: tanggalKey,
                 hari: getHariIni(),
@@ -2776,12 +2808,120 @@
                 kelasKosong: kosong,
                 terlambat: appState.terlambat.length,
                 izin: appState.izin.length,
-                tamu: appState.tamu.length
+                tamu: appState.tamu.length,
+                detailTerlambat: appState.terlambat.slice(),
+                detailIzin: appState.izin.slice(),
+                detailTamu: appState.tamu.slice(),
+                detailApel: Object.assign({}, appState.apel)
             };
             const prev = appState.riwayatHarian[tanggalKey];
             const berubah = !prev || JSON.stringify(prev) !== JSON.stringify(next);
             appState.riwayatHarian[tanggalKey] = next;
             if (berubah) saveState();
+        }
+
+        // ==========================================
+        // AUTO-RESET DATA E-PIKET SETIAP BERGANTI HARI
+        // ==========================================
+        // Data kerja E-Piket (Apel, Terlambat, Izin, Tamu, Kehadiran Guru Piket & Guru Mengajar) hanya berlaku
+        // untuk 1 hari. Fungsi ini dipanggil setiap aplikasi dibuka (dan dicek berkala tiap menit selama aplikasi
+        // tetap terbuka) untuk mendeteksi apakah tanggal sekarang sudah berbeda dari data terakhir yang aktif.
+        // Kalau berbeda (hari sudah berganti):
+        //   1. Data hari sebelumnya di-snapshot LENGKAP dulu ke appState.riwayatHarian (dengan tanggal yang benar,
+        //      bukan tanggal hari ini) supaya tidak hilang dan tetap bisa dibuka lagi lewat menu Rekap Bulanan.
+        //   2. Data kerja hari ini otomatis dikosongkan, supaya piket hari baru mulai bersih dari nol.
+        function cekPergantianHari() {
+            const tanggalTerakhir = appState.tanggalAktifTerakhir;
+            const tanggalHariIni = getTanggalKeyLokal();
+
+            if (!tanggalTerakhir) {
+                // Pemakaian pertama kali (belum pernah tercatat) -> catat tanggal hari ini saja, tanpa reset.
+                appState.tanggalAktifTerakhir = tanggalHariIni;
+                return false;
+            }
+
+            if (tanggalTerakhir === tanggalHariIni) return false; // masih hari yang sama, tidak perlu apa-apa
+
+            // Hari sudah berganti -> simpan dulu data hari kemarin secara lengkap, baru dikosongkan
+            simpanSnapshotLengkap(tanggalTerakhir);
+
+            appState.terlambat = [];
+            appState.izin = [];
+            appState.tamu = [];
+            appState.apel = { status: 'Belum', jam: '-', pembina: '-', catatan: '-' };
+            appState.guruKehadiran = {};
+            appState.guruMengajarKehadiran = {};
+            appState.tanggalAktifTerakhir = tanggalHariIni;
+            saveState();
+
+            Swal.fire({
+                icon: 'info',
+                title: 'Hari Baru, Data Piket Direset',
+                html: `Tanggal sudah berganti. Data E-Piket (Apel, Terlambat, Izin, Tamu &amp; Kehadiran) untuk hari ini otomatis dikosongkan.<br><span class="text-xs text-slate-500">Tenang, data hari sebelumnya tetap tersimpan dan bisa dibuka lagi lewat menu <b>E-Piket &gt; Riwayat &amp; Rekap Bulanan</b> (tombol Detail).</span>`,
+                confirmButtonText: 'Mengerti'
+            });
+            return true;
+        }
+
+        // Simpan snapshot LENGKAP (bukan hanya angka ringkasan) untuk sebuah tanggal tertentu, memakai jadwal
+        // piket/mengajar sesuai NAMA HARI dari tanggal tersebut (bukan hari ini) supaya perhitungannya tetap akurat.
+        function simpanSnapshotLengkap(tanggalKey) {
+            if (!appState.riwayatHarian) appState.riwayatHarian = {};
+            const hariItu = getNamaHariDariTanggal(tanggalKey);
+
+            const assignmentHariItu = PIKET_ASSIGNMENT[hariItu] || { pagi: [], siang: [] };
+            const idsPiketHariItu = [...new Set([...assignmentHariItu.pagi, ...assignmentHariItu.siang])];
+            const hadir = idsPiketHariItu.filter(id => (appState.guruKehadiran[id] && appState.guruKehadiran[id].status) === 'Hadir' || !appState.guruKehadiran[id]).length;
+
+            const jadwalMengajarHariItu = JADWAL_MENGAJAR[hariItu] || [];
+            const idsMengajarHariItu = [...new Set(jadwalMengajarHariItu.map(k => k.id_guru))];
+            const hadirMengajar = idsMengajarHariItu.filter(id => (appState.guruMengajarKehadiran[id] && appState.guruMengajarKehadiran[id].status) === 'Hadir' || !appState.guruMengajarKehadiran[id]).length;
+            const kosong = jadwalMengajarHariItu.filter(k => k.status === 'Tidak Hadir').length;
+
+            const kehadiranGuruMengajarHariItu = {};
+            idsMengajarHariItu.forEach(id => {
+                kehadiranGuruMengajarHariItu[id] = (appState.guruMengajarKehadiran[id] && appState.guruMengajarKehadiran[id].status) || 'Hadir';
+            });
+
+            appState.riwayatHarian[tanggalKey] = {
+                tanggal: tanggalKey,
+                hari: hariItu,
+                guruHadir: hadir,
+                guruTotal: idsPiketHariItu.length,
+                guruMengajarHadir: hadirMengajar,
+                guruMengajarTotal: idsMengajarHariItu.length,
+                kehadiranGuruMengajar: kehadiranGuruMengajarHariItu,
+                statusApel: appState.apel.status,
+                kelasKosong: kosong,
+                terlambat: appState.terlambat.length,
+                izin: appState.izin.length,
+                tamu: appState.tamu.length,
+                detailTerlambat: appState.terlambat.slice(),
+                detailIzin: appState.izin.slice(),
+                detailTamu: appState.tamu.slice(),
+                detailApel: Object.assign({}, appState.apel)
+            };
+        }
+
+        // Jalankan ulang render bagian-bagian yang datanya berubah setelah auto-reset hari baru terjadi
+        function renderUlangSetelahResetHari() {
+            generateGuruPiketList();
+            generateGuruMengajarList();
+            renderJadwalPelajaranTab();
+            renderTerlambat();
+            renderIzin();
+            renderTamu();
+            updateEpiketDashboard();
+        }
+
+        let _cekHariInterval = null;
+        // Jaga-jaga kalau aplikasi dibiarkan terbuka tanpa direfresh sampai melewati tengah malam —
+        // cek ulang tiap 1 menit, dan langsung render ulang tampilan begitu terdeteksi hari sudah berganti.
+        function mulaiCekPergantianHariBerkala() {
+            if (_cekHariInterval) return; // sudah berjalan, jangan dobel
+            _cekHariInterval = setInterval(() => {
+                if (cekPergantianHari()) renderUlangSetelahResetHari();
+            }, 60000);
         }
 
         // Ambil semua data riwayat harian untuk satu bulan tertentu (format bulanValue: 'YYYY-MM'), terurut tanggal
@@ -2809,7 +2949,7 @@
             const tbody = document.getElementById(tableBodyId);
             if (tbody) {
                 if (rows.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-sm text-slate-400">Belum ada data riwayat untuk bulan ini.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-sm text-slate-400">Belum ada data riwayat untuk bulan ini.</td></tr>`;
                 } else {
                     tbody.innerHTML = rows.map(r => `
                         <tr>
@@ -2821,6 +2961,7 @@
                             <td class="p-2 border-b text-center">${r.terlambat}</td>
                             <td class="p-2 border-b text-center">${r.izin}</td>
                             <td class="p-2 border-b text-center">${r.tamu}</td>
+                            <td class="p-2 border-b text-center"><button onclick="lihatDetailRiwayatHarian('${r.tanggal}')" class="text-blue-600 hover:text-blue-800 font-semibold text-xs"><i class="fa-solid fa-eye me-1"></i>Lihat</button></td>
                         </tr>`).join('');
                 }
             }
@@ -2856,6 +2997,61 @@
 
         // Hitung persentase kehadiran mengajar tiap guru untuk baris-baris riwayat (satu bulan) yang diberikan.
         // Kepala Sekolah SENGAJA tidak dihitung dalam persentase ini (JP-nya tetap ditetapkan 24 JP terpisah).
+        // Tampilkan detail LENGKAP data satu hari (bukan cuma angka ringkasan) dari Riwayat Harian —
+        // termasuk data hari yang sudah direset otomatis oleh cekPergantianHari(), karena datanya
+        // tetap tersimpan di appState.riwayatHarian walau data kerja hari itu sudah dikosongkan.
+        function lihatDetailRiwayatHarian(tanggalKey) {
+            const r = (appState.riwayatHarian || {})[tanggalKey];
+            if (!r) {
+                Swal.fire('Data Tidak Ditemukan', 'Detail untuk tanggal ini belum tersimpan.', 'info');
+                return;
+            }
+            const tglLabel = new Date(tanggalKey + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+
+            const buatTabel = (judul, ikon, items, kolom) => {
+                if (!items || items.length === 0) {
+                    return `<p class="text-xs text-slate-400 mb-3"><i class="fa-solid ${ikon} me-1"></i>${judul}: tidak ada data.</p>`;
+                }
+                const header = kolom.map(k => `<th class="p-1.5 border-b text-left">${k.label}</th>`).join('');
+                const baris = items.map(it => `<tr>${kolom.map(k => `<td class="p-1.5 border-b">${it[k.key] ?? '-'}</td>`).join('')}</tr>`).join('');
+                return `
+                    <div class="mb-3">
+                        <p class="text-xs font-bold text-slate-600 mb-1"><i class="fa-solid ${ikon} me-1"></i>${judul} (${items.length})</p>
+                        <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                            <table class="w-full text-xs whitespace-nowrap"><thead class="bg-slate-50"><tr>${header}</tr></thead><tbody>${baris}</tbody></table>
+                        </div>
+                    </div>`;
+            };
+
+            const apel = r.detailApel || { status: r.statusApel, jam: '-', pembina: '-', catatan: '-' };
+            const html = `
+                <div class="text-left">
+                    <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
+                        <div class="bg-blue-50 rounded-lg p-2"><p class="text-slate-500">Guru Piket Hadir</p><p class="font-bold text-blue-700">${r.guruHadir}/${r.guruTotal}</p></div>
+                        <div class="bg-indigo-50 rounded-lg p-2"><p class="text-slate-500">Guru Mengajar Hadir</p><p class="font-bold text-indigo-700">${r.guruMengajarHadir || 0}/${r.guruMengajarTotal || 0}</p></div>
+                        <div class="bg-emerald-50 rounded-lg p-2"><p class="text-slate-500">Kelas Kosong</p><p class="font-bold text-emerald-700">${r.kelasKosong}</p></div>
+                        <div class="bg-amber-50 rounded-lg p-2"><p class="text-slate-500">Apel</p><p class="font-bold text-amber-700">${apel.status} ${apel.jam && apel.jam !== '-' ? '(' + apel.jam + ')' : ''}</p></div>
+                    </div>
+                    ${buatTabel('Siswa Terlambat', 'fa-user-clock', r.detailTerlambat, [
+                        { key: 'nama', label: 'Nama' }, { key: 'kelas', label: 'Kelas' }, { key: 'jam', label: 'Jam' }, { key: 'alasan', label: 'Alasan' }, { key: 'tindakan', label: 'Sanksi' }
+                    ])}
+                    ${buatTabel('Izin Pulang', 'fa-person-walking-arrow-right', r.detailIzin, [
+                        { key: 'nama', label: 'Nama' }, { key: 'kelas', label: 'Kelas' }, { key: 'jam', label: 'Jam' }, { key: 'alasan', label: 'Alasan' }, { key: 'penjemput', label: 'Penjemput' }
+                    ])}
+                    ${buatTabel('Buku Tamu', 'fa-address-book', r.detailTamu, [
+                        { key: 'nama', label: 'Nama' }, { key: 'instansi', label: 'Instansi' }, { key: 'keperluan', label: 'Keperluan' }, { key: 'masuk', label: 'Masuk' }, { key: 'keluar', label: 'Keluar' }
+                    ])}
+                    ${(!r.detailTerlambat && !r.detailIzin && !r.detailTamu) ? '<p class="text-xs text-slate-400 italic">Data ini disimpan sebelum fitur detail lengkap ditambahkan, sehingga hanya tersedia dalam bentuk angka ringkasan di atas.</p>' : ''}
+                </div>`;
+
+            Swal.fire({
+                title: `Detail Piket — ${tglLabel}`,
+                html,
+                width: 640,
+                confirmButtonText: 'Tutup'
+            });
+        }
+
         function computeKehadiranMengajarPerGuru(rows) {
             const kepsek = getKepalaSekolah();
             const stats = {}; // idGuru -> { hadir, total }
@@ -3040,9 +3236,51 @@
             }
         }
 
-        function onLaporanSesiChange() { renderLaporanKoordinatorOptions(); }
+        function onLaporanSesiChange() { renderLaporanKoordinatorOptions(); muatCatatanKejadian(); }
         function onLaporanHariChange() { renderLaporanKoordinatorOptions(); }
         function onLaporanTanggalChange() { /* Tanggal bebas dipilih, tidak memengaruhi daftar petugas */ }
+
+        // Muat catatan kejadian tersimpan (sesuai sesi terpilih) ke kotak input
+        function muatCatatanKejadian() {
+            const sesiEl = document.getElementById('laporanSesi');
+            const catatanEl = document.getElementById('laporanCatatanKejadian');
+            if (!sesiEl || !catatanEl) return;
+            const sesiKey = sesiEl.value === 'Pagi' ? 'pagi' : 'siang';
+            if (!appState.catatanKejadian) appState.catatanKejadian = { pagi: '', siang: '' };
+            catatanEl.value = appState.catatanKejadian[sesiKey] || '';
+        }
+
+        // Simpan catatan kejadian (dipisah per sesi Pagi/Siang) yang diinput petugas piket
+        function simpanCatatanKejadian() {
+            const sesiEl = document.getElementById('laporanSesi');
+            const catatanEl = document.getElementById('laporanCatatanKejadian');
+            if (!sesiEl || !catatanEl) return;
+            const sesiKey = sesiEl.value === 'Pagi' ? 'pagi' : 'siang';
+            if (!appState.catatanKejadian) appState.catatanKejadian = { pagi: '', siang: '' };
+            appState.catatanKejadian[sesiKey] = catatanEl.value;
+            saveState();
+        }
+
+        // Ukuran halaman cetak (untuk window.print / CSS @page). Dipanggil saat dropdown ukuran kertas berubah,
+        // dan juga sekali saat boot supaya nilai default konsisten dengan pilihan pertama di dropdown.
+        const UKURAN_KERTAS = {
+            a4:     { css: 'A4', mm: [210, 297] },
+            f4:     { css: '215mm 330mm', mm: [215, 330] },
+            legal:  { css: 'legal', mm: [215.9, 355.6] },
+            letter: { css: 'letter', mm: [215.9, 279.4] }
+        };
+        function onLaporanUkuranKertasChange() {
+            const el = document.getElementById('laporanUkuranKertas');
+            const key = (el && UKURAN_KERTAS[el.value]) ? el.value : 'a4';
+            const ukuran = UKURAN_KERTAS[key];
+            let styleTag = document.getElementById('dynamicPageSizeStyle');
+            if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamicPageSizeStyle';
+                document.head.appendChild(styleTag);
+            }
+            styleTag.textContent = `@page { size: ${ukuran.css}; margin: 12mm; }`;
+        }
 
         function prepareLaporanContent() {
             const sesiEl = document.getElementById('laporanSesi');
@@ -3061,7 +3299,7 @@
             document.getElementById('printSesiJudul').textContent = `Sesi: Piket ${sesi}`;
             document.getElementById('printTanggal').textContent = `Hari/Tanggal: ${hari}, ${tanggalDisplay}`;
 
-            // Guru Piket — spesifik untuk sesi & hari yang dipilih (sesuai PIKET_ASSIGNMENT)
+            // A. Guru Piket — spesifik untuk sesi & hari yang dipilih (sesuai PIKET_ASSIGNMENT)
             const idsSesi = (PIKET_ASSIGNMENT[hari] && PIKET_ASSIGNMENT[hari][sesiKey]) || [];
             let p = '';
             idsSesi.forEach(id => {
@@ -3077,11 +3315,14 @@
                 ? `Terlaksana pkl ${appState.apel.jam}. Pembina: ${appState.apel.pembina}`
                 : `Tidak Terlaksana. Alasan: ${appState.apel.catatan}`;
                 
-            // KBM — ringkasan kehadiran mengikuti sesi terpilih
-            const hadirCount = idsSesi.filter(id => ((appState.guruKehadiran[id] && appState.guruKehadiran[id].status) || 'Hadir') === 'Hadir').length;
-            document.getElementById('printHadir').textContent = hadirCount;
-            document.getElementById('printAbsen').textContent = idsSesi.length - hadirCount;
-            const kelasKosongList = (JADWAL_MENGAJAR[hari] || []).filter(k => k.status === 'Tidak Hadir');
+            // C. Ringkasan KBM — Guru Hadir = jumlah GURU MENGAJAR yang hadir pada hari tsb (bukan guru piket),
+            // diambil dari jadwal mengajar hari itu (JADWAL_MENGAJAR) & status kehadiran mengajar (guruMengajarKehadiran).
+            const jadwalMengajarHari = JADWAL_MENGAJAR[hari] || [];
+            const idsMengajarHari = [...new Set(jadwalMengajarHari.map(k => k.id_guru))];
+            const hadirMengajarCount = idsMengajarHari.filter(id => ((appState.guruMengajarKehadiran[id] && appState.guruMengajarKehadiran[id].status) || 'Hadir') === 'Hadir').length;
+            document.getElementById('printHadir').textContent = hadirMengajarCount;
+            document.getElementById('printAbsen').textContent = idsMengajarHari.length - hadirMengajarCount;
+            const kelasKosongList = jadwalMengajarHari.filter(k => k.status === 'Tidak Hadir');
             document.getElementById('printKosong').textContent = kelasKosongList.length;
 
             // Kelas dengan guru tidak hadir beserta alasannya
@@ -3093,14 +3334,25 @@
             });
             document.getElementById('printKelasKosong').innerHTML = kk || '<li class="text-slate-400">Nihil, semua guru hadir</li>';
 
-            // Terlambat & Izin
-            let ter = ''; appState.terlambat.forEach(t => ter += `<li>${t.nama} (${t.kelas}) - ${t.jam} - ${t.alasan}</li>`);
+            // D. Catatan Kejadian Piket — sesuai sesi terpilih, diisi manual oleh petugas piket
+            if (!appState.catatanKejadian) appState.catatanKejadian = { pagi: '', siang: '' };
+            const catatanSesi = (appState.catatanKejadian[sesiKey] || '').trim();
+            document.getElementById('printCatatanSesiLabel').textContent = `(${sesi})`;
+            document.getElementById('printCatatanKejadian').textContent = catatanSesi || 'Nihil, tidak ada kejadian khusus.';
+
+            // E/F/G. Siswa Terlambat, Izin Pulang, Buku Tamu — dipisah otomatis sesuai sesi Piket Pagi/Siang
+            // berdasarkan jam kejadian diinput (sebelum 12:00 = Pagi, setelah = Siang)
+            document.getElementById('printTerlambatSesiLabel').textContent = `(${sesi})`;
+            document.getElementById('printIzinSesiLabel').textContent = `(${sesi})`;
+            document.getElementById('printTamuSesiLabel').textContent = `(${sesi})`;
+
+            let ter = ''; appState.terlambat.filter(t => getSesiDariJam(t.jam) === sesi).forEach(t => ter += `<li>${t.nama} (${t.kelas}) - ${t.jam} - ${t.alasan}</li>`);
             document.getElementById('printTerlambat').innerHTML = ter || '<li class="text-slate-400">Nihil</li>';
             
-            let iz = ''; appState.izin.forEach(i => iz += `<li>${i.nama} (${i.kelas}) - ${i.alasan}</li>`);
+            let iz = ''; appState.izin.filter(i => getSesiDariJam(i.jam) === sesi).forEach(i => iz += `<li>${i.nama} (${i.kelas}) - ${i.alasan}</li>`);
             document.getElementById('printIzin').innerHTML = iz || '<li class="text-slate-400">Nihil</li>';
 
-            let tam = ''; appState.tamu.forEach(i => tam += `<li>${i.nama} (${i.instansi}) - Keperluan: ${i.keperluan}</li>`);
+            let tam = ''; appState.tamu.filter(i => getSesiDariJam(i.masuk) === sesi).forEach(i => tam += `<li>${i.nama} (${i.instansi}) - Keperluan: ${i.keperluan}</li>`);
             document.getElementById('printTamu').innerHTML = tam || '<li class="text-slate-400">Nihil</li>';
 
             // Pengesahan: "Mengetahui" otomatis (Wakasek Kurikulum utk Pagi / Wakasek Sarpras utk Siang)
@@ -3124,18 +3376,22 @@
 
         function printLaporan() {
             prepareLaporanContent();
+            onLaporanUkuranKertasChange();
             window.print();
         }
 
         function exportLaporanPDF() {
             prepareLaporanContent();
             const element = document.getElementById('printArea');
+            const ukuranEl = document.getElementById('laporanUkuranKertas');
+            const ukuranKey = (ukuranEl && UKURAN_KERTAS[ukuranEl.value]) ? ukuranEl.value : 'a4';
+            const jsPdfFormat = ukuranKey === 'f4' ? UKURAN_KERTAS.f4.mm : ukuranKey;
             const opt = {
                 margin:       0.5,
                 filename:     'Laporan_Piket.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
+                jsPDF:        { unit: ukuranKey === 'f4' ? 'mm' : 'in', format: jsPdfFormat, orientation: 'portrait' },
                 // mode 'css' membaca CSS page-break-inside/break-inside pada elemen ber-class .avoid-break
                 // sehingga bagian seperti "H. Pengesahan" (tanda tangan) tidak terpotong di antara 2 halaman PDF;
                 // jika tidak muat di halaman berjalan, seluruh blok akan otomatis dipindah ke halaman berikutnya.
@@ -3354,38 +3610,79 @@
             Swal.fire({icon: 'success', title: 'Ditambahkan', text: `${jamLabel} kelas ${kelas} hari ${hari} berhasil ditambahkan ke Jadwal Mengajar.`, timer: 1800, showConfirmButton: false});
         }
 
+        // Tampilkan jadwal yang sudah diinput Admin dikelompokkan PER KELAS (satu kartu = jadwal 1 kelas
+        // seharian, diurutkan per jam), supaya lebih mudah dibaca & dicek sekilas layaknya jadwal pelajaran
+        // di papan sekolah — dibanding satu tabel panjang tercampur semua kelas.
         function renderKbmJadwalAdminList() {
             const cont = document.getElementById('kbmJadwalAdminContainer');
+            const summaryEl = document.getElementById('adminKbmSummary');
             if (!cont) return;
-            cont.innerHTML = '';
 
             const hari = getSelectedHari('adminKbmHari');
             const labelEl = document.getElementById('adminKbmHariLabel');
             if (labelEl) labelEl.textContent = hari;
 
-            const daftar = (JADWAL_MENGAJAR[hari] || []).map((k, idx) => Object.assign({}, k, { _idx: idx }))
-                .sort((a, b) => (a.jam_mulai - b.jam_mulai) || a.kelas.localeCompare(b.kelas));
+            const daftar = (JADWAL_MENGAJAR[hari] || []).map((k, idx) => Object.assign({}, k, { _idx: idx }));
+
+            if (summaryEl) {
+                const totalKelas = new Set(daftar.map(k => k.kelas)).size;
+                summaryEl.innerHTML = daftar.length === 0 ? '' : `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100"><i class="fa-solid fa-list-check"></i> ${daftar.length} Jam Pelajaran</span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200"><i class="fa-solid fa-chalkboard"></i> ${totalKelas} Kelas</span>`;
+            }
 
             if (daftar.length === 0) {
-                cont.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-sm text-slate-400">Belum ada jadwal mengajar untuk hari ${hari}.</td></tr>`;
+                cont.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center text-center py-10 px-4 border-2 border-dashed border-slate-200 rounded-xl">
+                        <i class="fa-solid fa-calendar-xmark text-3xl text-slate-300 mb-3"></i>
+                        <p class="text-sm font-semibold text-slate-500">Belum ada jadwal mengajar untuk hari ${hari}.</p>
+                        <p class="text-xs text-slate-400 mt-1">Tambahkan lewat form di atas.</p>
+                    </div>`;
                 return;
             }
 
+            const perKelas = {};
             daftar.forEach(k => {
-                const g = MASTER_GURU.find(x => x.id_guru === k.id_guru) || {};
-                const jamLabel = k.jam_mulai === k.jam_selesai ? `${k.jam_mulai}` : `${k.jam_mulai} - ${k.jam_selesai}`;
-                const isAgamaMapel = /agama/i.test(k.mapel || '');
-                const adaPasangan = isAgamaMapel && (JADWAL_MENGAJAR[hari] || []).some(o => o.id !== k.id && o.kelas === k.kelas && /agama/i.test(o.mapel || '') && !(k.jam_selesai < o.jam_mulai || k.jam_mulai > o.jam_selesai));
-                const parBadge = adaPasangan ? ' <span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">Paralel</span>' : '';
-                cont.innerHTML += `
-                    <tr>
-                        <td class="p-2 border-b font-bold">${k.kelas}</td>
-                        <td class="p-2 border-b text-center">${jamLabel}</td>
-                        <td class="p-2 border-b">${g.nama_guru || k.id_guru}</td>
-                        <td class="p-2 border-b">${k.mapel}${parBadge}</td>
-                        <td class="p-2 border-b text-center"><button onclick="hapusJadwalKbm('${hari}', ${k._idx})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button></td>
-                    </tr>`;
+                if (!perKelas[k.kelas]) perKelas[k.kelas] = [];
+                perKelas[k.kelas].push(k);
             });
+            const daftarKelasUrut = Object.keys(perKelas).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+
+            cont.innerHTML = daftarKelasUrut.map(kelas => {
+                const jamList = perKelas[kelas].sort((a, b) => a.jam_mulai - b.jam_mulai);
+                const baris = jamList.map(k => {
+                    const g = MASTER_GURU.find(x => x.id_guru === k.id_guru) || {};
+                    const namaGuru = g.nama_guru || k.id_guru;
+                    const jamLabel = k.jam_mulai === k.jam_selesai ? `${k.jam_mulai}` : `${k.jam_mulai}-${k.jam_selesai}`;
+                    const isAgamaMapel = /agama/i.test(k.mapel || '');
+                    const adaPasangan = isAgamaMapel && (JADWAL_MENGAJAR[hari] || []).some(o => o.id !== k.id && o.kelas === k.kelas && /agama/i.test(o.mapel || '') && !(k.jam_selesai < o.jam_mulai || k.jam_mulai > o.jam_selesai));
+                    const parBadge = adaPasangan ? '<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">Paralel</span>' : '';
+                    return `
+                        <div class="flex items-center gap-3 p-2.5 hover:bg-slate-50 transition-colors">
+                            <div class="shrink-0 w-12 h-12 rounded-lg bg-slate-800 text-white flex flex-col items-center justify-center leading-none">
+                                <span class="text-[8px] uppercase tracking-wide opacity-70 mb-0.5">Jam</span>
+                                <span class="text-sm font-bold">${jamLabel}</span>
+                            </div>
+                            <div class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${warnaAvatar(namaGuru)}">
+                                ${ambilInisialNama(namaGuru)}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-slate-800 truncate text-sm">${namaGuru}</p>
+                                <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-book me-1"></i>${k.mapel || '-'}${parBadge}</p>
+                            </div>
+                            <button onclick="hapusJadwalKbm('${hari}', ${k._idx})" class="shrink-0 text-rose-400 hover:text-rose-600 transition-colors" title="Hapus jam ini"><i class="fa-solid fa-trash"></i></button>
+                        </div>`;
+                }).join('<div class="border-t border-slate-100"></div>');
+
+                return `
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm self-start">
+                        <div class="flex items-center justify-between gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-solid fa-chalkboard text-blue-600"></i> Kelas ${kelas}</h4>
+                            <span class="text-[11px] font-semibold text-slate-500">${jamList.length} jam</span>
+                        </div>
+                        <div class="divide-y divide-slate-100">${baris}</div>
+                    </div>`;
+            }).join('');
         }
 
         function hapusJadwalKbm(hari, idx) {
@@ -3402,41 +3699,131 @@
         // ==========================================
         // TAB JADWAL PELAJARAN (Tampilan Jadwal Mengajar per Hari)
         // ==========================================
+        // Ambil 1-2 huruf inisial dari nama guru untuk ditampilkan sebagai avatar bulat
+        function ambilInisialNama(nama) {
+            if (!nama) return '?';
+            const bagian = nama.replace(/^(Bpk\.|Ibu|Bapak|Dra\.|Drs\.|S\.Pd\.?|M\.Pd\.?)\s*/gi, '').trim().split(/\s+/);
+            return ((bagian[0] || '')[0] || '?').toUpperCase() + ((bagian[1] || '')[0] || '').toUpperCase();
+        }
+
+        // Warna avatar konsisten berdasarkan nama (biar tiap guru punya warna khasnya sendiri)
+        function warnaAvatar(seed) {
+            const palet = [
+                'bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700',
+                'bg-violet-100 text-violet-700', 'bg-rose-100 text-rose-700', 'bg-cyan-100 text-cyan-700',
+                'bg-indigo-100 text-indigo-700', 'bg-teal-100 text-teal-700'
+            ];
+            let hash = 0;
+            for (let i = 0; i < (seed || '').length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+            return palet[Math.abs(hash) % palet.length];
+        }
+
+        // Isi ulang dropdown filter kelas sesuai daftar kelas yang ada jadwalnya hari itu, sambil menjaga pilihan aktif jika masih valid
+        function isiFilterKelasJadwal(daftarKelas) {
+            const sel = document.getElementById('jadwalKelasFilter');
+            if (!sel) return;
+            const nilaiSekarang = sel.value;
+            const opsiUnik = Array.from(new Set(daftarKelas)).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+            sel.innerHTML = '<option value="">Semua Kelas</option>' + opsiUnik.map(kls => `<option value="${kls}">${kls}</option>`).join('');
+            if (opsiUnik.includes(nilaiSekarang)) sel.value = nilaiSekarang;
+        }
+
         function renderJadwalPelajaranTab() {
             const cont = document.getElementById('jadwalPelajaranContainer');
+            const summaryEl = document.getElementById('jadwalPelajaranSummary');
             if (!cont) return;
 
             const hari = getSelectedHari('jadwalHariSelect');
             const searchEl = document.getElementById('cariJadwalGuru');
             const keyword = (searchEl ? searchEl.value : '').toLowerCase().trim();
 
-            const daftar = (JADWAL_MENGAJAR[hari] || []).map((k, idx) => Object.assign({}, k, { _idx: idx }))
+            const daftarHariIni = JADWAL_MENGAJAR[hari] || [];
+            isiFilterKelasJadwal(daftarHariIni.map(k => k.kelas));
+            const kelasFilter = (document.getElementById('jadwalKelasFilter') || {}).value || '';
+
+            const daftar = daftarHariIni.map((k, idx) => Object.assign({}, k, { _idx: idx }))
                 .sort((a, b) => (a.jam_mulai - b.jam_mulai) || a.kelas.localeCompare(b.kelas));
 
             const filtered = daftar.filter(k => {
+                if (kelasFilter && k.kelas !== kelasFilter) return false;
                 if (!keyword) return true;
                 const g = MASTER_GURU.find(x => x.id_guru === k.id_guru);
                 const namaGuru = g ? g.nama_guru.toLowerCase() : '';
                 return namaGuru.includes(keyword) || k.kelas.toLowerCase().includes(keyword) || (k.mapel || '').toLowerCase().includes(keyword);
             });
 
+            // Ringkasan cepat di atas: total jam pelajaran & jumlah kelas aktif hari ini
+            if (summaryEl) {
+                const totalKelas = new Set(filtered.map(k => k.kelas)).size;
+                const totalTidakHadir = filtered.filter(k => k.status === 'Tidak Hadir').length;
+                summaryEl.innerHTML = filtered.length === 0 ? '' : `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                        <i class="fa-solid fa-list-check"></i> ${filtered.length} Jam Pelajaran
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                        <i class="fa-solid fa-chalkboard"></i> ${totalKelas} Kelas
+                    </span>
+                    ${totalTidakHadir > 0 ? `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+                        <i class="fa-solid fa-triangle-exclamation"></i> ${totalTidakHadir} Guru Tidak Hadir
+                    </span>` : ''}`;
+            }
+
             if (filtered.length === 0) {
-                cont.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-sm text-slate-400">Belum ada jadwal pelajaran untuk hari ${hari}${keyword ? ' yang sesuai dengan pencarian' : ''}. Silakan atur di menu Admin &gt; Atur Jadwal Mengajar Mingguan.</td></tr>`;
+                cont.innerHTML = `
+                    <div class="flex flex-col items-center justify-center text-center py-12 px-4 border-2 border-dashed border-slate-200 rounded-xl">
+                        <i class="fa-solid fa-calendar-xmark text-3xl text-slate-300 mb-3"></i>
+                        <p class="text-sm font-semibold text-slate-500">Belum ada jadwal pelajaran untuk hari ${hari}${keyword || kelasFilter ? ' yang sesuai dengan pencarian/filter' : ''}.</p>
+                        <p class="text-xs text-slate-400 mt-1">Silakan atur di menu Admin &gt; Atur Jadwal Mengajar Mingguan.</p>
+                    </div>`;
                 return;
             }
 
-            cont.innerHTML = filtered.map(k => {
-                const g = MASTER_GURU.find(x => x.id_guru === k.id_guru) || {};
-                const jamLabel = k.jam_mulai === k.jam_selesai ? `Jam ke-${k.jam_mulai}` : `Jam ke-${k.jam_mulai} s/d ${k.jam_selesai}`;
-                const badgeClass = k.status === 'Tidak Hadir' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700';
+            // Kelompokkan per kelas supaya lebih mudah dipindai: satu kartu = jadwal 1 kelas seharian
+            const perKelas = {};
+            filtered.forEach(k => {
+                if (!perKelas[k.kelas]) perKelas[k.kelas] = [];
+                perKelas[k.kelas].push(k);
+            });
+            const daftarKelasUrut = Object.keys(perKelas).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+
+            cont.innerHTML = daftarKelasUrut.map(kelas => {
+                const jamList = perKelas[kelas];
+                const baris = jamList.map(k => {
+                    const g = MASTER_GURU.find(x => x.id_guru === k.id_guru) || {};
+                    const namaGuru = g.nama_guru || k.id_guru;
+                    const jamLabel = k.jam_mulai === k.jam_selesai ? `${k.jam_mulai}` : `${k.jam_mulai}-${k.jam_selesai}`;
+                    const tidakHadir = k.status === 'Tidak Hadir';
+                    const statusBadge = tidakHadir
+                        ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-circle-xmark"></i>Tidak Hadir</span>'
+                        : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-circle-check"></i>Hadir</span>';
+                    return `
+                        <div class="flex items-center gap-3 p-3 ${tidakHadir ? 'bg-rose-50/60' : ''} hover:bg-slate-50 transition-colors">
+                            <div class="shrink-0 w-14 h-14 rounded-lg bg-slate-800 text-white flex flex-col items-center justify-center leading-none">
+                                <span class="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">Jam</span>
+                                <span class="text-base font-bold">${jamLabel}</span>
+                            </div>
+                            <div class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ${warnaAvatar(namaGuru)}">
+                                ${ambilInisialNama(namaGuru)}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-slate-800 truncate">${namaGuru}</p>
+                                <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-book me-1"></i>${k.mapel || '-'}</p>
+                            </div>
+                            <div class="shrink-0">${statusBadge}</div>
+                        </div>`;
+                }).join('<div class="border-t border-slate-100"></div>');
+
                 return `
-                    <tr>
-                        <td class="p-3 border-b font-semibold">${jamLabel}</td>
-                        <td class="p-3 border-b">${k.kelas}</td>
-                        <td class="p-3 border-b">${g.nama_guru || k.id_guru}</td>
-                        <td class="p-3 border-b">${k.mapel}</td>
-                        <td class="p-3 border-b text-center"><span class="px-2 py-1 rounded-full text-xs font-bold ${badgeClass}">${k.status}</span></td>
-                    </tr>`;
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                        <div class="flex items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-chalkboard text-blue-600"></i> Kelas ${kelas}
+                            </h4>
+                            <span class="text-[11px] font-semibold text-slate-500">${jamList.length} jam pelajaran</span>
+                        </div>
+                        <div class="divide-y divide-slate-100">${baris}</div>
+                    </div>`;
             }).join('');
         }
 
@@ -3473,9 +3860,11 @@
                     appState.apel = { status: 'Belum', jam: '-', pembina: '-', catatan: '-' };
                     appState.guruKehadiran = {};
                     appState.guruMengajarKehadiran = {};
+                    appState.catatanKejadian = { pagi: '', siang: '' };
                     renderTerlambat(); renderIzin(); renderTamu();
                     generateGuruPiketList();
                     generateGuruMengajarList();
+                    muatCatatanKejadian();
                     updateEpiketDashboard();
                     saveState();
                     Swal.fire('Direset!', 'Data telah dikosongkan.', 'success');
@@ -3503,7 +3892,6 @@
                     } catch (err) {
                         console.error('Gagal menghapus data di Google Sheets:', err);
                     }
-                    localStorage.removeItem(ACCESS_STORAGE_KEY);
                     location.reload();
                 }
             });
