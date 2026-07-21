@@ -823,7 +823,7 @@
                             <label class="block text-xs font-semibold text-slate-500 mb-1">Catatan Kejadian Piket (Sesi Terpilih) — diisi petugas piket, tampil di laporan bagian D</label>
                             <textarea id="laporanCatatanKejadian" onchange="simpanCatatanKejadian()" rows="2" placeholder="Tuliskan kejadian penting hari ini yang perlu dicatat (jika ada). Kosongkan jika tidak ada." class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500"></textarea>
                         </div>
-                        <p class="text-xs text-slate-500"><i class="fa-solid fa-circle-info me-1"></i>Baris "Mengetahui" otomatis mengikuti sesi terpilih: <span id="laporanMengetahuiPreview" class="font-semibold text-slate-700"></span>. Pilihan Koordinator Piket diambil dari petugas piket sesi &amp; hari terkait (Admin &gt; Kelola Petugas Piket). Data Siswa Terlambat, Izin Pulang, dan Buku Tamu pada laporan otomatis dipisah sesuai jam kejadian (sebelum pukul 12:00 = Piket Pagi, setelah = Piket Siang).</p>
+                        <p class="text-xs text-slate-500"><i class="fa-solid fa-circle-info me-1"></i>Baris "Mengetahui" otomatis mengikuti sesi terpilih: <span id="laporanMengetahuiPreview" class="font-semibold text-slate-700"></span>. Pilihan Koordinator Piket diambil dari petugas piket sesi &amp; hari terkait (Admin &gt; Kelola Petugas Piket). Sesuai rombel Sekolah Pagi (kelas VII &amp; IX) / Sekolah Siang (kelas VIII), laporan Piket Pagi hanya menampilkan info kelas VII &amp; IX, dan laporan Piket Siang hanya kelas VIII — berlaku untuk Ringkasan KBM, Kelas Kosong, Siswa Terlambat, dan Izin Pulang. Buku Tamu tetap disaring berdasarkan jam kedatangan.</p>
                     </div>
                     <div id="printArea" class="bg-white border border-slate-200 p-8 shadow-sm print:shadow-none">
                         <div class="text-center border-b-2 border-black pb-4 mb-4">
@@ -1766,6 +1766,17 @@
         function getSesiDariJam(jamStr) {
             if (!jamStr) return 'Pagi';
             return jamStr < BATAS_JAM_SESI_SIANG ? 'Pagi' : 'Siang';
+        }
+
+        // UPTD SMP Negeri 10 Kupang menerapkan 2 rombongan belajar (shift) sekolah:
+        // Sekolah Pagi = kelas VII & IX, Sekolah Siang = kelas VIII.
+        // Dipakai untuk menyaring data per kelas (Ringkasan KBM, Kelas Kosong, Siswa Terlambat, Izin Pulang)
+        // di Laporan Harian Piket, supaya laporan Piket Siang hanya berisi info kelas VIII, dan laporan
+        // Piket Pagi hanya berisi info kelas VII & IX — tidak lagi tercampur.
+        const KELAS_ROMBEL_SEKOLAH_SIANG = ['VIII']; // ubah di sini jika suatu saat pembagian rombel berubah
+        function getShiftSekolahDariKelas(kelas) {
+            const romawiKelas = (kelas || '').trim().split(/\s+/)[0] || '';
+            return KELAS_ROMBEL_SEKOLAH_SIANG.includes(romawiKelas) ? 'Siang' : 'Pagi';
         }
 
         // ==========================================
@@ -3317,7 +3328,9 @@
                 
             // C. Ringkasan KBM — Guru Hadir = jumlah GURU MENGAJAR yang hadir pada hari tsb (bukan guru piket),
             // diambil dari jadwal mengajar hari itu (JADWAL_MENGAJAR) & status kehadiran mengajar (guruMengajarKehadiran).
-            const jadwalMengajarHari = JADWAL_MENGAJAR[hari] || [];
+            // Disaring per rombel sekolah sesuai sesi: Piket Pagi -> kelas VII & IX, Piket Siang -> kelas VIII saja,
+            // supaya laporan Piket Siang tidak lagi tercampur dengan info kelas Pagi (begitu juga sebaliknya).
+            const jadwalMengajarHari = (JADWAL_MENGAJAR[hari] || []).filter(k => getShiftSekolahDariKelas(k.kelas) === sesi);
             const idsMengajarHari = [...new Set(jadwalMengajarHari.map(k => k.id_guru))];
             const hadirMengajarCount = idsMengajarHari.filter(id => ((appState.guruMengajarKehadiran[id] && appState.guruMengajarKehadiran[id].status) || 'Hadir') === 'Hadir').length;
             document.getElementById('printHadir').textContent = hadirMengajarCount;
@@ -3340,16 +3353,18 @@
             document.getElementById('printCatatanSesiLabel').textContent = `(${sesi})`;
             document.getElementById('printCatatanKejadian').textContent = catatanSesi || 'Nihil, tidak ada kejadian khusus.';
 
-            // E/F/G. Siswa Terlambat, Izin Pulang, Buku Tamu — dipisah otomatis sesuai sesi Piket Pagi/Siang
-            // berdasarkan jam kejadian diinput (sebelum 12:00 = Pagi, setelah = Siang)
+            // E/F. Siswa Terlambat & Izin Pulang — disaring berdasarkan kelas siswa (rombel sekolah): laporan
+            // Piket Pagi hanya kelas VII & IX, laporan Piket Siang hanya kelas VIII. Ini lebih akurat daripada
+            // hanya mengandalkan jam input, karena kelas-lah yang sebenarnya menentukan rombel pagi/siang.
+            // G. Buku Tamu tidak terikat kelas, jadi tetap disaring berdasarkan jam kedatangan tamu.
             document.getElementById('printTerlambatSesiLabel').textContent = `(${sesi})`;
             document.getElementById('printIzinSesiLabel').textContent = `(${sesi})`;
             document.getElementById('printTamuSesiLabel').textContent = `(${sesi})`;
 
-            let ter = ''; appState.terlambat.filter(t => getSesiDariJam(t.jam) === sesi).forEach(t => ter += `<li>${t.nama} (${t.kelas}) - ${t.jam} - ${t.alasan}</li>`);
+            let ter = ''; appState.terlambat.filter(t => getShiftSekolahDariKelas(t.kelas) === sesi).forEach(t => ter += `<li>${t.nama} (${t.kelas}) - ${t.jam} - ${t.alasan}</li>`);
             document.getElementById('printTerlambat').innerHTML = ter || '<li class="text-slate-400">Nihil</li>';
             
-            let iz = ''; appState.izin.filter(i => getSesiDariJam(i.jam) === sesi).forEach(i => iz += `<li>${i.nama} (${i.kelas}) - ${i.alasan}</li>`);
+            let iz = ''; appState.izin.filter(i => getShiftSekolahDariKelas(i.kelas) === sesi).forEach(i => iz += `<li>${i.nama} (${i.kelas}) - ${i.alasan}</li>`);
             document.getElementById('printIzin').innerHTML = iz || '<li class="text-slate-400">Nihil</li>';
 
             let tam = ''; appState.tamu.filter(i => getSesiDariJam(i.masuk) === sesi).forEach(i => tam += `<li>${i.nama} (${i.instansi}) - Keperluan: ${i.keperluan}</li>`);
