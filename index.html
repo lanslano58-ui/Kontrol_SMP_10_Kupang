@@ -2063,36 +2063,58 @@
         // PENYIMPANAN DATA (Google Sheets via Apps Script)
         // ==========================================
 
+        // Kirim payload state saat ini ke Google Sheets SEKARANG JUGA (tanpa tunda).
+        // Mengembalikan Promise<boolean> (true = berhasil tersimpan di server).
+        // Dipakai langsung oleh saveState() (versi debounce) maupun oleh aksi-aksi
+        // kritikal (tambah/hapus jadwal, dll) yang butuh kepastian tersimpan SEBELUM
+        // memberi tahu pengguna "berhasil" — supaya tidak ada jeda waktu di mana data
+        // sudah tampak di layar tapi belum benar-benar sampai ke server (rawan hilang
+        // kalau halaman keburu di-reload sebelum pengiriman selesai).
+        async function saveStateNow() {
+            try {
+                const payload = {
+                    token: ACCESS_CODE,
+                    data: {
+                        appState: appState,
+                        masterGuru: MASTER_GURU,
+                        piketAssignment: PIKET_ASSIGNMENT,
+                        jadwalMengajar: JADWAL_MENGAJAR,
+                        lastSaved: new Date().toISOString()
+                    }
+                };
+                const res = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight ke Apps Script
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (!result.success) throw new Error(result.error || 'Gagal menyimpan');
+                updateSaveIndicator();
+                return true;
+            } catch (err) {
+                console.error('Gagal menyimpan data ke Google Sheets:', err);
+                Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: 'Tidak bisa menyimpan ke Google Sheets. Cek koneksi internet & URL Apps Script Anda.', timer: 3000, showConfirmButton: false });
+                return false;
+            }
+        }
+
         // Simpan seluruh state (appState, MASTER_GURU, dll) ke Google Sheets.
-        // Di-debounce 700ms supaya tidak menulis berkali-kali saat ada aksi beruntun.
+        // Di-debounce 700ms supaya tidak menulis berkali-kali saat ada aksi beruntun
+        // (misalnya ketikan di kolom teks). JANGAN dipakai untuk aksi sekali-klik yang
+        // butuh kepastian tersimpan (tambah/hapus data) — untuk itu pakai saveStateNow().
         function saveState() {
             clearTimeout(_saveDebounceTimer);
-            _saveDebounceTimer = setTimeout(async () => {
-                try {
-                    const payload = {
-                        token: ACCESS_CODE,
-                        data: {
-                            appState: appState,
-                            masterGuru: MASTER_GURU,
-                            piketAssignment: PIKET_ASSIGNMENT,
-                            jadwalMengajar: JADWAL_MENGAJAR,
-                            lastSaved: new Date().toISOString()
-                        }
-                    };
-                    const res = await fetch(APPS_SCRIPT_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight ke Apps Script
-                        body: JSON.stringify(payload)
-                    });
-                    const result = await res.json();
-                    if (!result.success) throw new Error(result.error || 'Gagal menyimpan');
-                    updateSaveIndicator();
-                } catch (err) {
-                    console.error('Gagal menyimpan data ke Google Sheets:', err);
-                    Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: 'Tidak bisa menyimpan ke Google Sheets. Cek koneksi internet & URL Apps Script Anda.', timer: 3000, showConfirmButton: false });
-                }
-            }, 700);
+            _saveDebounceTimer = setTimeout(saveStateNow, 700);
         }
+
+        // Peringatkan pengguna kalau mencoba menutup/reload tab selagi masih ada
+        // penyimpanan yang dijadwalkan (debounce) tapi belum sempat terkirim ke server.
+        window.addEventListener('beforeunload', (e) => {
+            if (_saveDebounceTimer) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
 
         // Muat kembali state dari Google Sheets (dipanggil sekali setelah kode akses benar, sebelum render)
         async function loadState() {
@@ -3582,7 +3604,7 @@
             }).join('');
         }
 
-        function tambahJadwalKbm(e) {
+        async function tambahJadwalKbm(e) {
             e.preventDefault();
             const hari = getSelectedHari('adminKbmHari');
             const kelas = document.getElementById('kbmKelas').value;
@@ -3637,14 +3659,17 @@
                 keterangan: '-'
             });
 
-            saveState();
             renderKbmJadwalAdminList();
             renderKbmTable();
             renderJadwalPelajaranTab();
             generateGuruMengajarList();
             updateEpiketDashboard();
+
+            const berhasilTersimpan = await saveStateNow();
+            if (!berhasilTersimpan) return; // pesan error sudah ditampilkan oleh saveStateNow()
+
             const jamLabel = jamMulai === jamSelesai ? `Jam ke-${jamMulai}` : `Jam ke-${jamMulai} s/d ${jamSelesai}`;
-            Swal.fire({icon: 'success', title: 'Ditambahkan', text: `${jamLabel} kelas ${kelas} hari ${hari} berhasil ditambahkan ke Jadwal Mengajar.`, timer: 1800, showConfirmButton: false});
+            Swal.fire({icon: 'success', title: 'Ditambahkan', text: `${jamLabel} kelas ${kelas} hari ${hari} berhasil ditambahkan & tersimpan ke Jadwal Mengajar.`, timer: 1800, showConfirmButton: false});
         }
 
         // Tampilkan jadwal yang sudah diinput Admin dikelompokkan PER KELAS (satu kartu = jadwal 1 kelas
@@ -3722,15 +3747,15 @@
             }).join('');
         }
 
-        function hapusJadwalKbm(hari, idx) {
+        async function hapusJadwalKbm(hari, idx) {
             if (!JADWAL_MENGAJAR[hari]) return;
             JADWAL_MENGAJAR[hari].splice(idx, 1);
-            saveState();
             renderKbmJadwalAdminList();
             renderKbmTable();
             renderJadwalPelajaranTab();
             generateGuruMengajarList();
             updateEpiketDashboard();
+            await saveStateNow(); // pastikan penghapusan benar-benar tersimpan sebelum halaman ditinggalkan/di-reload
         }
 
         // ==========================================
