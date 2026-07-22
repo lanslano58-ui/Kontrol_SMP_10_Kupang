@@ -968,6 +968,26 @@
                     </div>
                 </div>
 
+                <!-- Backup & Restore Data (Excel) -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h4 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-cloud-arrow-down text-teal-600 mr-2"></i>Backup &amp; Pulihkan Data (Excel)</h4>
+                    <p class="text-xs text-slate-500 mb-4">Unduh seluruh data aplikasi (Data Guru, Petugas Piket, Jadwal Mengajar, Pengumuman, dan riwayat lainnya) sebagai satu file Excel. Simpan file ini secara berkala sebagai cadangan — jika suatu saat data perlu dipulihkan (misalnya setelah Reset Total Aplikasi atau pindah ke Google Sheets baru), tinggal Import file backup ini dan seluruh data piket &amp; jadwal pelajaran yang pernah diinput akan otomatis kembali seperti semula, tanpa perlu input ulang manual.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="border border-teal-200 bg-teal-50/50 rounded-lg p-4 text-center">
+                            <i class="fa-solid fa-file-arrow-down text-3xl text-teal-600 mb-2"></i>
+                            <p class="text-sm font-semibold text-slate-700 mb-3">Download Backup (Excel)</p>
+                            <button onclick="downloadBackupExcel()" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-700 transition w-full"><i class="fa-solid fa-download me-2"></i>Unduh Backup Sekarang</button>
+                        </div>
+                        <div class="border border-indigo-200 bg-indigo-50/50 rounded-lg p-4 text-center">
+                            <i class="fa-solid fa-file-arrow-up text-3xl text-indigo-600 mb-2"></i>
+                            <p class="text-sm font-semibold text-slate-700 mb-3">Pulihkan dari File Backup</p>
+                            <input type="file" id="importBackupExcel" accept=".xlsx" class="hidden" onchange="handleBackupRestoreImport(event)">
+                            <label for="importBackupExcel" class="cursor-pointer inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition w-full"><i class="fa-solid fa-upload me-2"></i>Pilih File Backup Excel</label>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-3"><i class="fa-solid fa-circle-info me-1"></i>Proses pulihkan akan menimpa data Guru, Petugas Piket, dan Jadwal Mengajar yang sedang berjalan saat ini di semua perangkat. Selalu akan ada konfirmasi sebelum data ditimpa.</p>
+                </div>
+
                 <!-- Kelola Petugas Piket (Pagi & Siang) -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
@@ -3855,6 +3875,314 @@
                 }).then(() => {
                     Swal.fire('Sukses', 'Data Excel berhasil diimport (Simulasi)', 'success');
                 });
+            }
+        }
+
+        // ==========================================
+        // BACKUP & PULIHKAN DATA (EXCEL)
+        // ==========================================
+        // Tujuan: menyediakan cara mengekstrak SEMUA data yang sudah pernah diinput (Data Guru,
+        // Petugas Piket, Jadwal Mengajar, Pengumuman, serta data lain di appState seperti riwayat
+        // harian, catatan kejadian, dsb) menjadi satu file Excel. File ini bisa di-import kembali
+        // kapan saja (mis. setelah Reset Total Aplikasi, ganti perangkat, atau pindah Google Sheets)
+        // supaya semua data otomatis kembali seperti sebelum di-reset, tanpa input ulang manual.
+        //
+        // Struktur file backup:
+        // - Sheet "Data Guru", "Petugas Piket", "Jadwal Mengajar", "Pengumuman" -> versi mudah dibaca
+        //   manusia (bisa dibuka/diperiksa langsung di Excel/Spreadsheet).
+        // - Sheet "BACKUP_DATA" -> menyimpan salinan JSON utuh dari appState + semua master data.
+        //   Sheet inilah yang dipakai aplikasi saat proses PULIHKAN, supaya data yang tidak
+        //   ditampilkan di sheet lain (mis. riwayat harian/bulanan, status apel, catatan kejadian)
+        //   ikut kembali persis seperti kondisi terakhir saat backup dibuat.
+
+        function buildBackupWorkbook() {
+            const wb = XLSX.utils.book_new();
+
+            // 1) Data Guru
+            const wsGuru = XLSX.utils.json_to_sheet(MASTER_GURU.map(g => ({
+                'ID Guru': g.id_guru || '',
+                'Nama Guru': g.nama_guru || '',
+                'NIP/NUPTK': g.nip_nuptk || '',
+                'Status': g.status || '',
+                'Tugas Tambahan': g.tugas_tambahan || '-',
+                'Keterangan Tambahan': g.ket_tambahan || '-'
+            })));
+            XLSX.utils.book_append_sheet(wb, wsGuru, 'Data Guru');
+
+            // 2) Petugas Piket (Pagi & Siang per hari)
+            const piketRows = [];
+            HARI_LIST.forEach(h => {
+                const a = PIKET_ASSIGNMENT[h] || { pagi: [], siang: [] };
+                (a.pagi || []).forEach(id => {
+                    const g = MASTER_GURU.find(x => x.id_guru === id);
+                    piketRows.push({ Hari: h, Sesi: 'Pagi', 'ID Guru': id, 'Nama Guru': g ? g.nama_guru : id });
+                });
+                (a.siang || []).forEach(id => {
+                    const g = MASTER_GURU.find(x => x.id_guru === id);
+                    piketRows.push({ Hari: h, Sesi: 'Siang', 'ID Guru': id, 'Nama Guru': g ? g.nama_guru : id });
+                });
+            });
+            const wsPiket = XLSX.utils.json_to_sheet(piketRows.length ? piketRows : [{ Hari: '', Sesi: '', 'ID Guru': '', 'Nama Guru': '' }]);
+            XLSX.utils.book_append_sheet(wb, wsPiket, 'Petugas Piket');
+
+            // 3) Jadwal Mengajar Mingguan (per hari, per kelas, per jam)
+            const jadwalRows = [];
+            HARI_LIST.forEach(h => {
+                (JADWAL_MENGAJAR[h] || []).forEach(k => {
+                    const g = MASTER_GURU.find(x => x.id_guru === k.id_guru);
+                    jadwalRows.push({
+                        Hari: h,
+                        Kelas: k.kelas || '',
+                        'Jam Mulai': k.jam_mulai,
+                        'Jam Selesai': k.jam_selesai,
+                        'ID Guru': k.id_guru || '',
+                        'Nama Guru': g ? g.nama_guru : (k.id_guru || ''),
+                        'Mata Pelajaran': k.mapel || '',
+                        'Status': k.status || 'Hadir',
+                        'Keterangan': k.keterangan || '-'
+                    });
+                });
+            });
+            const wsJadwal = XLSX.utils.json_to_sheet(jadwalRows.length ? jadwalRows : [{ Hari: '', Kelas: '', 'Jam Mulai': '', 'Jam Selesai': '', 'ID Guru': '', 'Nama Guru': '', 'Mata Pelajaran': '', 'Status': '', 'Keterangan': '' }]);
+            XLSX.utils.book_append_sheet(wb, wsJadwal, 'Jadwal Mengajar');
+
+            // 4) Pengumuman Aplikasi
+            const wsPengumuman = XLSX.utils.json_to_sheet([{ 'Pengumuman Aplikasi': appState.pengumuman || '' }]);
+            XLSX.utils.book_append_sheet(wb, wsPengumuman, 'Pengumuman');
+
+            // 5) Salinan JSON utuh (dipakai aplikasi untuk pulihkan data secara akurat)
+            const rawPayload = {
+                appState: appState,
+                masterGuru: MASTER_GURU,
+                piketAssignment: PIKET_ASSIGNMENT,
+                jadwalMengajar: JADWAL_MENGAJAR,
+                exportedAt: new Date().toISOString(),
+                version: 1
+            };
+            // Excel membatasi 1 sel maksimal 32.767 karakter, sedangkan data lengkap (terutama
+            // riwayat harian yang menumpuk tiap hari) bisa jauh lebih panjang dari itu. Karena itu
+            // JSON-nya dipecah jadi beberapa baris/sel kecil di sini, dan disambung kembali saat
+            // proses Pulihkan (lihat handleBackupRestoreImport).
+            const rawJsonText = JSON.stringify(rawPayload);
+            const RAW_CHUNK_SIZE = 30000; // sedikit di bawah batas 32.767 karakter, untuk jaga-jaga
+            const rawChunks = [];
+            for (let i = 0; i < rawJsonText.length; i += RAW_CHUNK_SIZE) {
+                rawChunks.push(rawJsonText.slice(i, i + RAW_CHUNK_SIZE));
+            }
+            const wsRaw = XLSX.utils.aoa_to_sheet([
+                ['JANGAN DIUBAH/DIHAPUS — sheet ini dipakai aplikasi untuk memulihkan data secara utuh (termasuk riwayat harian, status apel, catatan kejadian, dsb). Data disimpan terpecah di beberapa baris berikut karena batas panjang 1 sel Excel. Sheet-sheet lain di file ini hanya salinan yang mudah dibaca manusia.'],
+                ...rawChunks.map(chunk => [chunk])
+            ]);
+            XLSX.utils.book_append_sheet(wb, wsRaw, 'BACKUP_DATA');
+
+            return wb;
+        }
+
+        function downloadBackupExcel() {
+            try {
+                const wb = buildBackupWorkbook();
+                const tanggal = getTanggalKeyLokal();
+                XLSX.writeFile(wb, `Backup_EPiket_SMPN10Kupang_${tanggal}.xlsx`);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Backup Berhasil Dibuat',
+                    text: 'File Excel backup sudah diunduh. Simpan file ini di tempat aman — file ini bisa dipakai kapan saja untuk memulihkan seluruh data Guru, Petugas Piket, dan Jadwal Mengajar lewat tombol "Pilih File Backup Excel".',
+                    timer: 4500
+                });
+            } catch (err) {
+                console.error('Gagal membuat file backup Excel:', err);
+                Swal.fire('Gagal', 'Terjadi kesalahan saat membuat file backup Excel.', 'error');
+            }
+        }
+
+        function handleBackupRestoreImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const wb = XLSX.read(e.target.result, { type: 'array' });
+                    const rawSheetName = wb.SheetNames.find(n => n === 'BACKUP_DATA');
+
+                    if (rawSheetName) {
+                        // Jalur paling akurat: baca salinan JSON dari sheet BACKUP_DATA.
+                        // Baris pertama = catatan/keterangan, baris-baris setelahnya = potongan JSON
+                        // (dipecah saat export karena batas panjang 1 sel Excel) yang perlu disambung lagi.
+                        const aoa = XLSX.utils.sheet_to_json(wb.Sheets[rawSheetName], { header: 1 });
+                        const jsonText = aoa.slice(1).map(row => (row && row[0]) ? String(row[0]) : '').join('');
+                        if (!jsonText) throw new Error('Sheet BACKUP_DATA kosong/rusak.');
+                        const parsed = JSON.parse(jsonText);
+                        confirmAndApplyBackup(parsed, file.name, true);
+                    } else {
+                        // Jalur cadangan: susun ulang dari sheet yang bisa dibaca manusia
+                        // (Data Guru, Petugas Piket, Jadwal Mengajar, Pengumuman)
+                        const parsed = buildBackupObjectFromReadableSheets(wb);
+                        confirmAndApplyBackup(parsed, file.name, false);
+                    }
+                } catch (err) {
+                    console.error('Gagal membaca file backup Excel:', err);
+                    Swal.fire('Gagal Membaca File', 'File Excel tidak sesuai format backup aplikasi ini. Pastikan file yang dipilih adalah hasil "Download Backup Excel" dari aplikasi ini.', 'error');
+                } finally {
+                    event.target.value = ''; // reset input, supaya file yang sama bisa dipilih ulang nanti
+                }
+            };
+            reader.onerror = function () {
+                Swal.fire('Gagal', 'Tidak bisa membaca file yang dipilih.', 'error');
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Fallback: bila sheet BACKUP_DATA tidak ditemukan (mis. file backup lama atau diedit manual),
+        // susun kembali data dari sheet-sheet yang bisa dibaca manusia.
+        function buildBackupObjectFromReadableSheets(wb) {
+            const getSheet = (name) => {
+                const found = wb.SheetNames.find(n => n.toLowerCase() === name.toLowerCase());
+                return found ? wb.Sheets[found] : null;
+            };
+
+            // Data lain (riwayat harian, apel, catatan kejadian, dsb) dipertahankan apa adanya
+            // karena tidak tersedia versi "mudah dibaca"-nya di sheet manapun.
+            const result = {
+                appState: JSON.parse(JSON.stringify(appState)),
+                masterGuru: MASTER_GURU,
+                piketAssignment: PIKET_ASSIGNMENT,
+                jadwalMengajar: JADWAL_MENGAJAR
+            };
+
+            const wsGuru = getSheet('Data Guru');
+            if (wsGuru) {
+                const rows = XLSX.utils.sheet_to_json(wsGuru, { defval: '' });
+                if (rows.length > 0) {
+                    result.masterGuru = rows.map(r => ({
+                        id_guru: String(r['ID Guru'] || '').trim(),
+                        nama_guru: String(r['Nama Guru'] || '').trim(),
+                        nip_nuptk: String(r['NIP/NUPTK'] || '').trim(),
+                        status: String(r['Status'] || '').trim(),
+                        tugas_tambahan: String(r['Tugas Tambahan'] || '-').trim() || '-',
+                        ket_tambahan: String(r['Keterangan Tambahan'] || '-').trim() || '-'
+                    })).filter(g => g.id_guru);
+                }
+            }
+
+            const wsPiket = getSheet('Petugas Piket');
+            if (wsPiket) {
+                const rows = XLSX.utils.sheet_to_json(wsPiket, { defval: '' });
+                const piket = {};
+                HARI_LIST.forEach(h => piket[h] = { pagi: [], siang: [] });
+                rows.forEach(r => {
+                    const hari = String(r['Hari'] || '').trim();
+                    const sesi = String(r['Sesi'] || '').trim().toLowerCase();
+                    const idGuru = String(r['ID Guru'] || '').trim();
+                    if (!piket[hari] || !idGuru) return;
+                    if (sesi === 'pagi') piket[hari].pagi.push(idGuru);
+                    else if (sesi === 'siang') piket[hari].siang.push(idGuru);
+                });
+                result.piketAssignment = piket;
+            }
+
+            const wsJadwal = getSheet('Jadwal Mengajar');
+            if (wsJadwal) {
+                const rows = XLSX.utils.sheet_to_json(wsJadwal, { defval: '' });
+                const jadwal = {};
+                HARI_LIST.forEach(h => jadwal[h] = []);
+                rows.forEach((r, i) => {
+                    const hari = String(r['Hari'] || '').trim();
+                    if (!jadwal[hari] || !r['Kelas']) return;
+                    jadwal[hari].push({
+                        id: 'KBM' + Date.now() + '_' + i,
+                        kelas: String(r['Kelas'] || '').trim(),
+                        jam_mulai: Number(r['Jam Mulai']) || r['Jam Mulai'],
+                        jam_selesai: Number(r['Jam Selesai']) || r['Jam Selesai'],
+                        id_guru: String(r['ID Guru'] || '').trim(),
+                        mapel: String(r['Mata Pelajaran'] || '').trim(),
+                        status: String(r['Status'] || 'Hadir').trim() || 'Hadir',
+                        keterangan: String(r['Keterangan'] || '-').trim() || '-'
+                    });
+                });
+                result.jadwalMengajar = jadwal;
+            }
+
+            const wsPengumuman = getSheet('Pengumuman');
+            if (wsPengumuman) {
+                const rows = XLSX.utils.sheet_to_json(wsPengumuman, { defval: '' });
+                if (rows.length > 0 && typeof rows[0]['Pengumuman Aplikasi'] === 'string') {
+                    result.appState.pengumuman = rows[0]['Pengumuman Aplikasi'];
+                }
+            }
+
+            return result;
+        }
+
+        function confirmAndApplyBackup(parsed, fileName, isFullRaw) {
+            if (!parsed || typeof parsed !== 'object' || (!parsed.masterGuru && !parsed.appState)) {
+                Swal.fire('File Tidak Valid', 'Isi file backup tidak dikenali oleh aplikasi ini.', 'error');
+                return;
+            }
+            const jumlahGuru = Array.isArray(parsed.masterGuru) ? parsed.masterGuru.length : 0;
+
+            Swal.fire({
+                title: 'Pulihkan Data dari Backup?',
+                html: `Anda akan memulihkan data dari file <b>${fileName}</b>${isFullRaw ? ' (backup lengkap)' : ' (disusun ulang dari sheet yang bisa dibaca)'}.<br><br>
+                       Ini akan <b>menimpa</b> data Guru (${jumlahGuru} guru), Petugas Piket, dan Jadwal Mengajar yang sedang berjalan saat ini — dan tersimpan otomatis ke Google Sheets untuk semua perangkat.<br><br>
+                       Lanjutkan?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Ya, Pulihkan',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) applyRestoredBackup(parsed);
+            });
+        }
+
+        function applyRestoredBackup(parsed) {
+            try {
+                if (parsed.appState && typeof parsed.appState === 'object') {
+                    appState = Object.assign(appState, parsed.appState);
+                }
+                if (Array.isArray(parsed.masterGuru) && parsed.masterGuru.length > 0) {
+                    MASTER_GURU = parsed.masterGuru;
+                }
+                if (parsed.piketAssignment) {
+                    HARI_LIST.forEach(h => {
+                        PIKET_ASSIGNMENT[h] = Object.assign({ pagi: [], siang: [] }, parsed.piketAssignment[h] || {});
+                    });
+                }
+                if (parsed.jadwalMengajar) {
+                    HARI_LIST.forEach(h => {
+                        JADWAL_MENGAJAR[h] = Array.isArray(parsed.jadwalMengajar[h]) ? parsed.jadwalMengajar[h] : [];
+                    });
+                }
+
+                saveState(); // simpan hasil pulihan ke Google Sheets supaya semua perangkat lain ikut ter-update
+
+                // Muat ulang semua tampilan yang bergantung pada data di atas
+                const pengumumanInput = document.getElementById('adminPengumumanInput');
+                if (pengumumanInput) pengumumanInput.value = appState.pengumuman || '';
+
+                initHariSelectors();
+                renderGuruList();
+                generateGuruPiketList();
+                generateGuruMengajarList();
+                renderJadwalPelajaranTab();
+                updateEpiketDashboard();
+                renderTerlambat();
+                renderIzin();
+                renderTamu();
+                renderPembinaApelOptions();
+                renderLaporanKoordinatorOptions();
+                muatCatatanKejadian();
+                if (typeof renderPiketAssignmentAdmin === 'function') renderPiketAssignmentAdmin();
+                if (typeof renderKbmAdminForm === 'function') renderKbmAdminForm();
+                if (typeof renderKbmJadwalAdminList === 'function') renderKbmJadwalAdminList();
+
+                Swal.fire({ icon: 'success', title: 'Data Berhasil Dipulihkan', text: 'Semua data dari file backup sudah dimuat dan disimpan.', timer: 2800 });
+            } catch (err) {
+                console.error('Gagal memulihkan data dari backup:', err);
+                Swal.fire('Gagal Memulihkan', 'Terjadi kesalahan saat menerapkan data dari file backup.', 'error');
             }
         }
 
