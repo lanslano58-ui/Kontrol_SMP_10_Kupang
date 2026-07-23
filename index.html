@@ -397,8 +397,8 @@
 
                 <div id="jadwalPelajaranSummary" class="flex flex-wrap gap-2 mb-4"></div>
 
-                <!-- Wadah kartu jadwal (dikelompokkan per kelas, ramah untuk HP maupun PC) -->
-                <div id="jadwalPelajaranContainer" class="space-y-4"></div>
+                <!-- Wadah kartu jadwal (dikelompokkan per kelas, disusun grid supaya ringkas & mudah dipindai) -->
+                <div id="jadwalPelajaranContainer" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start"></div>
             </div>
         </section>
 
@@ -3849,40 +3849,46 @@
 
             cont.innerHTML = daftarKelasUrut.map(kelas => {
                 const jamList = perKelas[kelas];
-                const baris = jamList.map(k => {
+                const kosongCount = jamList.filter(k => k.status === 'Tidak Hadir').length;
+
+                // Kartu mini per jam pelajaran, disusun grid 2 kolom di dalam kartu kelas —
+                // ringkas (tanpa avatar besar/baris panjang) tapi tetap memuat info penting:
+                // jam, guru, mapel & status, supaya sekali lihat langsung kebaca semua.
+                const kartuJam = jamList.map(k => {
                     const g = MASTER_GURU.find(x => x.id_guru === k.id_guru) || {};
                     const namaGuru = g.nama_guru || k.id_guru;
                     const jamLabel = k.jam_mulai === k.jam_selesai ? `${k.jam_mulai}` : `${k.jam_mulai}-${k.jam_selesai}`;
                     const tidakHadir = k.status === 'Tidak Hadir';
-                    const statusBadge = tidakHadir
-                        ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-circle-xmark"></i>Tidak Hadir</span>'
-                        : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-circle-check"></i>Hadir</span>';
                     return `
-                        <div class="flex items-center gap-3 p-3 ${tidakHadir ? 'bg-rose-50/60' : ''} hover:bg-slate-50 transition-colors">
-                            <div class="shrink-0 w-14 h-14 rounded-lg bg-slate-800 text-white flex flex-col items-center justify-center leading-none">
-                                <span class="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">Jam</span>
-                                <span class="text-base font-bold">${jamLabel}</span>
+                        <div class="relative rounded-lg border ${tidakHadir ? 'border-rose-200 bg-rose-50/70' : 'border-slate-200 bg-slate-50/70'} p-2.5 flex flex-col gap-1.5 min-w-0">
+                            <div class="flex items-center justify-between gap-1">
+                                <span class="inline-flex items-center gap-1 text-[11px] font-bold ${tidakHadir ? 'text-rose-700' : 'text-blue-700'}">
+                                    <i class="fa-regular fa-clock"></i> Jam ${jamLabel}
+                                </span>
+                                <span class="shrink-0 w-2 h-2 rounded-full ${tidakHadir ? 'bg-rose-500' : 'bg-emerald-500'}" title="${tidakHadir ? 'Tidak Hadir' : 'Hadir'}"></span>
                             </div>
-                            <div class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ${warnaAvatar(namaGuru)}">
-                                ${ambilInisialNama(namaGuru)}
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${warnaAvatar(namaGuru)}">
+                                    ${ambilInisialNama(namaGuru)}
+                                </div>
+                                <p class="font-semibold text-slate-800 text-xs leading-tight truncate" title="${namaGuru}">${namaGuru}</p>
                             </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="font-semibold text-slate-800 truncate">${namaGuru}</p>
-                                <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-book me-1"></i>${k.mapel || '-'}</p>
-                            </div>
-                            <div class="shrink-0">${statusBadge}</div>
+                            <p class="text-[11px] text-slate-500 truncate" title="${k.mapel || '-'}"><i class="fa-solid fa-book me-1 opacity-60"></i>${k.mapel || '-'}</p>
                         </div>`;
-                }).join('<div class="border-t border-slate-100"></div>');
+                }).join('');
 
                 return `
-                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col">
                         <div class="flex items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                <i class="fa-solid fa-chalkboard text-blue-600"></i> Kelas ${kelas}
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2 min-w-0 truncate">
+                                <i class="fa-solid fa-chalkboard text-blue-600 shrink-0"></i> <span class="truncate">Kelas ${kelas}</span>
                             </h4>
-                            <span class="text-[11px] font-semibold text-slate-500">${jamList.length} jam pelajaran</span>
+                            <div class="shrink-0 flex items-center gap-1.5">
+                                ${kosongCount > 0 ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700">${kosongCount} kosong</span>` : ''}
+                                <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap">${jamList.length} jam</span>
+                            </div>
                         </div>
-                        <div class="divide-y divide-slate-100">${baris}</div>
+                        <div class="p-3 grid grid-cols-2 gap-2">${kartuJam}</div>
                     </div>`;
             }).join('');
         }
