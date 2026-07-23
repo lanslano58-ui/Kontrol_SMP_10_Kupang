@@ -249,8 +249,9 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 app-fixed-height">
                 <!-- Sidebar Pencarian Guru -->
                 <div class="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col h-full">
-                    <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-users text-blue-600"></i> Daftar Guru Sekolah
+                    <h3 class="font-bold text-slate-900 mb-3 flex items-center justify-between gap-2">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-users text-blue-600"></i> Daftar Guru Sekolah</span>
+                        <span id="guruTotalBadge" class="text-[11px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-full border border-blue-100">0 Guru</span>
                     </h3>
                     <div class="relative mb-4">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
@@ -283,9 +284,7 @@
                                     <h3 id="dtNamaGuru" class="text-2xl font-bold"></h3>
                                     <p class="text-blue-100 text-sm">NIP/NUPTK: <span id="dtNip" class="font-mono"></span></p>
                                 </div>
-                                <div class="bg-white/20 h-14 w-14 rounded-full flex items-center justify-center text-2xl shadow-sm">
-                                    <i class="fa-solid fa-user-tie"></i>
-                                </div>
+                                <div id="dtAvatar" class="bg-white/20 h-14 w-14 rounded-full flex items-center justify-center text-xl font-bold shadow-sm"></div>
                             </div>
                             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/50">
                                 <div class="bg-white p-4 rounded-lg border border-slate-100 shadow-sm flex items-center gap-4">
@@ -2251,27 +2250,44 @@
             document.getElementById(id).classList.add('hidden');
         }
 
+        let _guruTerpilihId = null; // dipakai untuk menyorot kartu guru yang sedang dibuka di panel detail
+
         function renderGuruList(filterText = '') {
             const container = document.getElementById('guruListContainer');
             container.innerHTML = '';
-            
-            const filtered = MASTER_GURU.filter(g => g.nama_guru.toLowerCase().includes(filterText.toLowerCase()));
-            
+
+            const totalBadge = document.getElementById('guruTotalBadge');
+            if (totalBadge) totalBadge.textContent = `${MASTER_GURU.length} Guru`;
+
+            const filtered = MASTER_GURU.filter(g => g.nama_guru.toLowerCase().includes(filterText.toLowerCase()))
+                .sort((a, b) => a.nama_guru.localeCompare(b.nama_guru, 'id'));
+
             if(filtered.length === 0) {
-                container.innerHTML = '<p class="text-center text-sm text-slate-400 p-4">Guru tidak ditemukan.</p>';
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center text-center py-10 px-4">
+                        <i class="fa-solid fa-user-slash text-2xl text-slate-300 mb-2"></i>
+                        <p class="text-sm font-semibold text-slate-400">Guru tidak ditemukan.</p>
+                    </div>`;
                 return;
             }
 
             filtered.forEach(guru => {
+                const terpilih = guru.id_guru === _guruTerpilihId;
+                const punyaTugasTambahan = guru.tugas_tambahan && guru.tugas_tambahan !== '-';
                 const div = document.createElement('div');
-                div.className = 'cursor-pointer p-3 rounded-lg hover:bg-blue-50 border border-transparent hover:border-blue-100 transition flex items-center gap-3';
+                div.className = `group cursor-pointer p-2.5 rounded-lg border transition flex items-center gap-3 ${
+                    terpilih ? 'bg-blue-50 border-blue-200 shadow-sm' : 'border-transparent hover:bg-white hover:border-slate-200 hover:shadow-sm'
+                }`;
                 div.onclick = () => showGuruDetail(guru.id_guru);
                 div.innerHTML = `
-                    <div class="bg-blue-100 text-blue-600 w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-bold">${guru.nama_guru.charAt(0)}</div>
-                    <div>
-                        <h5 class="text-sm font-bold text-slate-800">${guru.nama_guru}</h5>
-                        <p class="text-xs text-slate-500">ID: ${guru.id_guru}</p>
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-bold text-sm ${warnaAvatar(guru.nama_guru)}">${ambilInisialNama(guru.nama_guru)}</div>
+                    <div class="min-w-0 flex-1">
+                        <h5 class="text-sm font-bold text-slate-800 truncate">${guru.nama_guru}</h5>
+                        ${punyaTugasTambahan
+                            ? `<span class="inline-block mt-0.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-full truncate max-w-full">${guru.tugas_tambahan}</span>`
+                            : `<p class="text-xs text-slate-400 truncate">ID: ${guru.id_guru}</p>`}
                     </div>
+                    <i class="fa-solid fa-chevron-right text-xs shrink-0 ${terpilih ? 'text-blue-500' : 'text-slate-300 group-hover:text-slate-400'} transition"></i>
                 `;
                 container.appendChild(div);
             });
@@ -2293,6 +2309,12 @@
             document.getElementById('dtNamaGuru').textContent = guru.nama_guru;
             document.getElementById('dtNip').textContent = guru.nip_nuptk;
             document.getElementById('dtTugasTambahan').textContent = guru.tugas_tambahan !== '-' ? guru.tugas_tambahan : 'Tidak Ada Tugas Tambahan';
+            document.getElementById('dtAvatar').textContent = ambilInisialNama(guru.nama_guru);
+
+            // Sorot kartu guru ini di daftar sidebar, sambil tetap menjaga kata kunci pencarian yang sedang diketik
+            _guruTerpilihId = id_guru;
+            const searchInput = document.getElementById('searchGuruInput');
+            renderGuruList(searchInput ? searchInput.value : '');
             
             // Hitung JP dan Kelas
             const tugasMengajar = TUGAS_MENGAJAR.filter(t => t.id_guru === id_guru);
