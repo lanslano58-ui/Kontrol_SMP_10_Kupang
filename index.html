@@ -253,13 +253,33 @@
                         <span class="flex items-center gap-2"><i class="fa-solid fa-users text-blue-600"></i> Daftar Guru Sekolah</span>
                         <span id="guruTotalBadge" class="text-[11px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-full border border-blue-100">0 Guru</span>
                     </h3>
-                    <div class="relative mb-4">
+                    <div class="relative mb-2">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                             <i class="fa-solid fa-magnifying-glass text-sm"></i>
                         </span>
                         <input type="text" id="searchGuruInput" onkeyup="filterGuruList()"
                                class="w-full bg-slate-50 text-slate-900 border border-slate-200 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition" 
                                placeholder="Cari Guru...">
+                    </div>
+                    <div class="relative mb-4">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-filter text-sm"></i>
+                        </span>
+                        <select id="filterKelompokGuru" onchange="filterGuruList()"
+                                class="w-full bg-slate-50 text-slate-900 border border-slate-200 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition appearance-none">
+                            <option value="semua">Semua Guru</option>
+                            <optgroup label="Berdasarkan Mata Pelajaran" id="filterKelompokMapelGroup"></optgroup>
+                            <optgroup label="Berdasarkan Jabatan / Bagian">
+                                <option value="jabatan:wali_kelas">Wali Kelas</option>
+                                <option value="jabatan:kurikulum">Bagian Kurikulum</option>
+                                <option value="jabatan:kesiswaan">Bagian Kesiswaan</option>
+                                <option value="jabatan:sarpras">Bagian Sarpras</option>
+                                <option value="jabatan:tanpa_tugas">Tanpa Tugas Tambahan</option>
+                            </optgroup>
+                        </select>
+                        <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 pointer-events-none">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </span>
                     </div>
                     <div id="guruListContainer" class="flex-grow overflow-y-auto space-y-1 pr-1 border border-slate-100 rounded-lg p-1 bg-slate-50/50">
                         <!-- Rendered by JS -->
@@ -2173,6 +2193,7 @@
             mulaiCekPergantianHariBerkala(); // Terus cek tiap menit kalau aplikasi dibiarkan terbuka lewat tengah malam
             initHariSelectors(); // Isi semua dropdown hari (default: hari ini)
             initClock();
+            renderFilterKelompokMapelOptions(); // Isi opsi filter kelompok guru (mata pelajaran) sebelum daftar guru dirender
             renderGuruList();
             initCharts();
             generateGuruPiketList(); // Auto-generate absensi list & jadwal KBM sesuai hari terpilih
@@ -2257,14 +2278,50 @@
 
         let _guruTerpilihId = null; // dipakai untuk menyorot kartu guru yang sedang dibuka di panel detail
 
+        // Mengisi daftar mata pelajaran pada dropdown filter kelompok guru (diambil dari TUGAS_MENGAJAR, otomatis update kalau data berubah)
+        function renderFilterKelompokMapelOptions() {
+            const group = document.getElementById('filterKelompokMapelGroup');
+            if (!group) return;
+            const currentValue = document.getElementById('filterKelompokGuru') ? document.getElementById('filterKelompokGuru').value : 'semua';
+            const daftarMapel = [...new Set(TUGAS_MENGAJAR.map(t => t.mata_pelajaran))].sort((a, b) => a.localeCompare(b, 'id'));
+            group.innerHTML = daftarMapel.map(m => `<option value="mapel:${m}">${m}</option>`).join('');
+            // Pertahankan pilihan yang sedang aktif kalau masih ada di daftar baru
+            const select = document.getElementById('filterKelompokGuru');
+            if (select && [...select.options].some(o => o.value === currentValue)) select.value = currentValue;
+        }
+
+        // Menentukan apakah seorang guru termasuk kelompok jabatan/bagian tertentu berdasarkan tugas_tambahan & ket_tambahan
+        function guruTermasukJabatan(guru, kelompok) {
+            const teks = `${guru.tugas_tambahan || ''} ${guru.ket_tambahan || ''}`.toLowerCase();
+            if (kelompok === 'wali_kelas') return teks.includes('wali kelas');
+            if (kelompok === 'kurikulum') return teks.includes('kurikulum');
+            if (kelompok === 'kesiswaan') return teks.includes('kesiswaan');
+            if (kelompok === 'sarpras') return teks.includes('sarpras') || teks.includes('sarana prasarana');
+            if (kelompok === 'tanpa_tugas') return (!guru.tugas_tambahan || guru.tugas_tambahan === '-') && (!guru.ket_tambahan || guru.ket_tambahan === '-');
+            return true;
+        }
+
         function renderGuruList(filterText = '') {
             const container = document.getElementById('guruListContainer');
             container.innerHTML = '';
 
             const totalBadge = document.getElementById('guruTotalBadge');
-            if (totalBadge) totalBadge.textContent = `${MASTER_GURU.length} Guru`;
 
-            const filtered = MASTER_GURU.filter(g => g.nama_guru.toLowerCase().includes(filterText.toLowerCase()))
+            const kelompokSelect = document.getElementById('filterKelompokGuru');
+            const kelompokValue = kelompokSelect ? kelompokSelect.value : 'semua';
+            const [tipeKelompok, nilaiKelompok] = kelompokValue.includes(':') ? kelompokValue.split(':') : [kelompokValue, ''];
+
+            let sumberGuru = MASTER_GURU;
+            if (tipeKelompok === 'mapel') {
+                const idGuruMapel = new Set(TUGAS_MENGAJAR.filter(t => t.mata_pelajaran === nilaiKelompok).map(t => t.id_guru));
+                sumberGuru = MASTER_GURU.filter(g => idGuruMapel.has(g.id_guru));
+            } else if (tipeKelompok === 'jabatan') {
+                sumberGuru = MASTER_GURU.filter(g => guruTermasukJabatan(g, nilaiKelompok));
+            }
+
+            if (totalBadge) totalBadge.textContent = `${sumberGuru.length} Guru`;
+
+            const filtered = sumberGuru.filter(g => g.nama_guru.toLowerCase().includes(filterText.toLowerCase()))
                 .sort((a, b) => a.nama_guru.localeCompare(b.nama_guru, 'id'));
 
             if(filtered.length === 0) {
@@ -2740,9 +2797,26 @@
 
         function updateStatusGuruMengajar(id, val) {
             appState.guruMengajarKehadiran[id].status = val;
+
+            // Sinkronkan otomatis ke Kontrol KBM: kalau status guru di Guru Mengajar BUKAN "Hadir"
+            // (Izin/Sakit/Alpa), seluruh jam mengajarnya hari ini otomatis ikut ditandai "Tidak Hadir"
+            // di Kontrol KBM. Sebaliknya, kalau dikembalikan ke "Hadir", status di Kontrol KBM ikut
+            // dikembalikan ke "Hadir" juga supaya kedua modul selalu konsisten.
+            const hari = getSelectedHari('epGuruMengajarHari');
+            const statusKbm = val === 'Hadir' ? 'Hadir' : 'Tidak Hadir';
+            const keteranganKbm = val === 'Hadir' ? '-' : val;
+            (JADWAL_MENGAJAR[hari] || []).forEach(entry => {
+                if (entry.id_guru === id) {
+                    entry.status = statusKbm;
+                    entry.keterangan = keteranganKbm;
+                }
+            });
+
             updateEpiketDashboard();
             saveState();
             generateGuruMengajarList();
+            renderKbmTable();
+            renderJadwalPelajaranTab();
         }
 
         // Mengisi ulang opsi dropdown filter Kelas pada modul Kontrol KBM sesuai kelas yang ada di jadwal hari terpilih
@@ -4316,6 +4390,7 @@
                 if (pengumumanInput) pengumumanInput.value = appState.pengumuman || '';
 
                 initHariSelectors();
+                renderFilterKelompokMapelOptions();
                 renderGuruList();
                 generateGuruPiketList();
                 generateGuruMengajarList();
